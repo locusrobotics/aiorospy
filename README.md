@@ -26,96 +26,12 @@ Simplifies dependency management and makes using a different version of python p
 
 ## Examples
 
-### Example Publisher and Subscriber
+Check out the scripts folder.
 
-```python
-#!/usr/bin/env python3.6
-import asyncio
-import rospy
-from aiorospy import AsyncSubscriber
-from std_msgs.msg import String
+With a roscore running:
 
-sub = AsyncSubscriber('ping', String)
-pub = rospy.Publisher('ping', String, queue_size=1)
-
-async def send_ping():
-    while True:
-        self.pub.publish(f'Ping!')
-        await asyncio.sleep(1)
-
-async def receive_ping():
-    while True:
-        message = await self.sub.get()
-        print(f'Received: {message.data}')
-
-if __name__ == '__main__':
-    rospy.init_node('example_pubsub', disable_signals=True)
-    try:
-        asyncio.get_event_loop().run_until_complete(asyncio.gather(send_ping(), receive_ping())
-    finally:
-        rospy.signal_shutdown('Shutting down.')
 ```
-
-### Example Service Proxy
-
-```python
-#!/usr/bin/env python3.6
-import asyncio
-import rospy
-from aiorospy import AsyncServiceProxy
-from std_srvs.srv import SetBool, SetBoolResponse
-
-proxy = AsyncServiceProxy('ping', SetBool)
-
-async def call_service():
-  while True:
-            response = await proxy.send(True)
-            print(response.message)
-            await asyncio.sleep(1)
-
-if __name__ == '__main__':
-    rospy.init_node('example_service', disable_signals=True)
-    try:
-        asyncio.get_event_loop().run_until_complete(call_service())
-    finally:
-        rospy.signal_shutdown('Shutting down.')
-```
-
-
-### Example Simple Action
-
-```python
-#!/usr/bin/env python3.6
-import asyncio
-import rospy
-from actionlib.msg import TwoIntsAction, TwoIntsGoal, TwoIntsResult
-from aiorospy import AsyncSimpleActionClient, AsyncSimpleActionServer
-
-class ExampleSimpleAction:
-
-    def __init__(self):
-        self.server = AsyncSimpleActionServer('add_two_ints', TwoIntsAction, self.execute)
-        self.server.start()
-
-        self.client = AsyncSimpleActionClient('add_two_ints', TwoIntsAction)
-
-    async def execute(self, goal):
-        await asyncio.sleep(3)
-        self.server.set_succeeded(TwoIntsResult(goal.a + goal.b))
-
-    async def send_goals(self):
-        while True:
-            result = await self.client.send_goal(TwoIntsGoal(1, 2))
-            print(f'The result is: {result}')
-            await asyncio.sleep(5)
-
-if __name__ == '__main__':
-    rospy.init_node('example_actionlib', disable_signals=True)
-    example = ExampleSimpleAction()
-    try:
-        asyncio.get_event_loop().run_until_complete(example.send_goals())
-    finally:
-        rospy.signal_shutdown('Shutting down.')
+rosrun aiorospy aiorospy_telephone
 ```
 
 ## How it works
@@ -124,5 +40,4 @@ There's no desire to reimplement rospy this late in its life, so this package wr
 
 ## TODO
 - Implement the non-Simple ActionClient and ActionServer
-- Implement an awaitable version of `rospy.Service`
 - Explore need for `queue_size` to be handled.
