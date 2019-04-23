@@ -13,6 +13,8 @@
 
   <depend>actionlib</depend>
   <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
 
   <test_depend>roslint</test_depend>
 
