@@ -26,6 +26,8 @@ Simplifies dependency management and makes using a different version of python p
 
 ## Examples
 
+Check out the scripts folder for a few `rosrun`able scripts.
+
 ### Example Publisher and Subscriber
 
 ```python
@@ -121,8 +123,8 @@ if __name__ == '__main__':
 ## How it works
 There's no desire to reimplement rospy this late in its life, so this package wraps the various rospy interfaces instead. This means that there are still underlying threads that handle TCP I/O for topics and services. But unlike `rospy`, the API is not callbacks that run in separate threads, but rather `awaitables` that run in the main thread's event loop.  This is accomplished by using thread-safe intermediaries such as `asyncio.call_soon_threadsafe` and `janus.Queue`.
 
+Note the use of `disable_signals=True` and `rospy.signal_shutdown()` in the examples. This is necessary to give asyncio control of shutting down the event loop and application in general. Alternatively you can manually call `loop.stop()` and do cleanup yourself.
 
 ## TODO
 - Implement the non-Simple ActionClient and ActionServer
-- Implement an awaitable version of `rospy.Service`
 - Explore need for `queue_size` to be handled.

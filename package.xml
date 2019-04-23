@@ -5,7 +5,7 @@
   <description>Asyncio wrapper around rospy I/O interfaces.</description>
 
   <maintainer email="ablakey@locusrobotics.com">Andrew Blakey</maintainer>
-  <license>TBD</license>
+  <license>MIT</license>
 
   <buildtool_depend>catkin</buildtool_depend>
 
