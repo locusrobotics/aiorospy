@@ -71,6 +71,7 @@ class AiorospyTelephone:
 
             print('Step 10: print the actionlib goal result. Wow. That all sure was unnecessary.')
             print(f'The count is: {result.result}')
+
             await asyncio.sleep(5)
             self.count += 1
 
@@ -79,15 +80,13 @@ class AiorospyTelephone:
         response = await self.service_proxy.send(str(goal.goal))
 
         print('Step 9: Set the actionlib goal as succeeded, passing the service call response content as a result.')
-        result = TestResult()
-        result.result = int(response.message)
-        # self.action_server.set_succeeded(result)
-        self.loop.call_soon_threadsafe(self.action_server.set_succeeded, result)
+        self.action_server.set_succeeded(TestResult(int(response.message)))
 
     async def handle_rosservice_call(self, msg):
         async with ClientSession() as session:
             print('Step 3: Handle the ROS service call by making an HTTP request.')
             async with session.get(f'http://localhost:8080/hello?count={msg.data}') as response:
+
                 print('Step 8: Await the HTTP response then respond to the ROS service call with the contents.')
                 count = await response.text()
                 await session.close()
@@ -102,8 +101,8 @@ class AiorospyTelephone:
 
                 print('Step 6: Wait for a ROS message to be published on the ROS topic.')
                 msg = await self.subscriber.get()
-
                 await session.close()
+
                 print('Step 7: respond to the HTTP request with the contents of the ROS message.')
                 return web.Response(text=str(msg.data))
 
