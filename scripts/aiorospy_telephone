@@ -21,8 +21,8 @@ def custom_exception_handler(loop, context):
 
 class AiorospyTelephone:
     '''
-    The Aiorospy Telephone is an exercise in single-thread concurrency to help illustrate the power of this paradigm.
-    During the lifecycle of a single request, we have numerous pending tasks/coroutines for stateful I/O transactions.
+    The Aiorospy Telephone is an exercise in single-thread concurrency to help illustrate the power of this model.
+    During the lifecycle of a single request we have numerous pending tasks/coroutines for stateful I/O transactions.
 
     These include:
     - HTTP request
@@ -31,9 +31,10 @@ class AiorospyTelephone:
     - ROS Publisher/Subscriber
     - ROS Service call
 
-    You'll notice that while there are underlying threads for some of the concurrent actions, the entire application
+    You'll notice that while there are underlying threads for some of the concurrent tasks, the entire application
     flow is handled in a single thread in the event loop with numerous places where deadlocking would occur without
     concurrency. Part of the beauty of this model is that you can read and predict the control flow in a linear manner.
+    And all this is done without a single lock.
 
     Note that we jump between string and integer data to avoid having to create additional ROS message types for this
     example.
@@ -45,10 +46,13 @@ class AiorospyTelephone:
     def __init__(self):
         self.publisher = rospy.Publisher('hello_pub', UInt64, queue_size=1)
         self.subscriber = aiorospy.AsyncSubscriber('hello_pub', UInt64)
+
         self.action_server = aiorospy.AsyncSimpleActionServer('hello_action', TestAction, self.handle_action)
         self.action_client = aiorospy.AsyncSimpleActionClient('hello_action', TestAction)
-        self.service = aiorospy.AsyncService('hello_world', SetString, self.handle_rosservice_call)
-        self.service_proxy = aiorospy.AsyncServiceProxy('hello_world', SetString)
+
+        self.service = aiorospy.AsyncService('hello_srv', SetString, self.handle_rosservice_call)
+        self.service_proxy = aiorospy.AsyncServiceProxy('hello_srv', SetString)
+
         self.http_server = web.Application()
         self.http_server.add_routes([
             web.get('/ws', self.handle_websocket_connection),
