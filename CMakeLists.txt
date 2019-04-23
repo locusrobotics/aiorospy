@@ -19,7 +19,7 @@ install(FILES requirements.txt
 
 catkin_install_python(
   PROGRAMS
-        scripts/aiorospy_example
+        scripts/aiorospy_telephone
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

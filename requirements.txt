@@ -1,2 +1,4 @@
+aiohttp==3.5.4
 janus==0.4.0
+PyYAML==5.1
 

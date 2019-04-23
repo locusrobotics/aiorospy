@@ -1,5 +1,5 @@
 from .action import AsyncSimpleActionClient, AsyncSimpleActionServer
-from .service import AsyncServiceProxy
+from .service import AsyncService, AsyncServiceProxy
 from .topic import AsyncSubscriber
 
-__all__ = ('AsyncSubscriber', 'AsyncServiceProxy', 'AsyncSimpleActionClient', 'AsyncSimpleActionServer')
+__all__ = ('AsyncSubscriber', 'AsyncService', 'AsyncServiceProxy', 'AsyncSimpleActionClient', 'AsyncSimpleActionServer')

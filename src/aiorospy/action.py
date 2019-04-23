@@ -27,4 +27,4 @@ class AsyncSimpleActionServer(SimpleActionServer):
 
     def _execute_cb(self):
         goal = self.accept_new_goal()
-        asyncio.run_coroutine_threadsafe(self._execute(goal), self._loop)
+        future = asyncio.run_coroutine_threadsafe(self._execute(goal), self._loop)
