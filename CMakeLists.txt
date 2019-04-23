@@ -20,6 +20,7 @@ install(FILES requirements.txt
 catkin_install_python(
   PROGRAMS
         scripts/aiorospy_telephone
+        scripts/talker_listener
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
