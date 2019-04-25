@@ -26,7 +26,7 @@ Simplifies dependency management and makes using a different version of python p
 
 ## Examples
 
-Check out the `asyncio_examples/scripts` folder for a few `rosrun`able scripts.
+Check out the scripts folder for a few `rosrun`able scripts.
 
 ### Example Publisher and Subscriber
 
