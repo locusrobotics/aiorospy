@@ -1,7 +1,7 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python
 
 import asyncio
-import rospy 
+import rospy
 from aiorospy import AsyncSubscriber
 from std_msgs.msg import String
 
@@ -31,4 +31,3 @@ if __name__ == '__main__':
         pass
     finally:
         print(f'\nShutting Down')
-
