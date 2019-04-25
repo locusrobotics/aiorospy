@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>aiorospy</name>
-  <version>0.0.1</version>
+  <version>0.0.0</version>
   <description>Asyncio wrapper around rospy I/O interfaces.</description>
 
   <maintainer email="ablakey@locusrobotics.com">Andrew Blakey</maintainer>
@@ -9,12 +9,8 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <build_depend>catkin_virtualenv</build_depend>
-
-  <depend>actionlib</depend>
-  <depend>rospy</depend>
-  <depend>std_msgs</depend>
-  <depend>std_srvs</depend>
+  <exec_depend>actionlib</exec_depend>
+  <exec_depend>rospy</exec_depend>
 
   <test_depend>roslint</test_depend>
 
