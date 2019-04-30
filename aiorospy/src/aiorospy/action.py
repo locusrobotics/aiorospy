@@ -14,7 +14,7 @@ class AsyncSimpleActionClient:
 
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self._client.wait_for_result)
-        return self._client.get_result()
+        return self._client.get_state(), self._client.get_result()
 
 
 class AsyncSimpleActionServer(SimpleActionServer):
