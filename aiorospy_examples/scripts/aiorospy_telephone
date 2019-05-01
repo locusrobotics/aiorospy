@@ -67,7 +67,7 @@ class AiorospyTelephone:
     async def send_goal(self):
         while True:
             print('Step 1: Create and dispatch an actionlib goal and await its completion.')
-            result = await self.action_client.send_goal(TestGoal(self.count))
+            state, result = await self.action_client.send_goal(TestGoal(self.count))
 
             print('Step 10: print the actionlib goal result. Wow. That all sure was unnecessary.')
             print(f'The count is: {result.result}')
