@@ -1,4 +1,4 @@
-from .action import AsyncSimpleActionClient, AsyncSimpleActionServer
+from .action import AsyncSimpleActionClient, AsyncSimpleActionServer, AsyncActionClient
 from .service import AsyncService, AsyncServiceProxy
 from .topic import AsyncSubscriber
 
