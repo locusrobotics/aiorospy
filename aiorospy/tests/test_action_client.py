@@ -1,4 +1,5 @@
 #!/usr/bin/env python3.7
+import aiostream
 import asyncio
 import rospy
 import rostest
@@ -17,14 +18,17 @@ class TestActionClient(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         rospy.init_node("test", anonymous=True, disable_signals=True)
-        cls.action_server = ActionServer("test", TestAction, lambda goal: print(goal), auto_start=False)
-        cls.action_server.start()
+
+    def create_server(self, ns, goal_cb, auto_start=True):
+        action_server = ActionServer(ns, TestAction, goal_cb=goal_cb, auto_start=False)
+        if auto_start:
+            action_server.start()
+        return action_server
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
-
-        self.action_client = AsyncActionClient("test", TestAction, loop=self.loop)
+        # self.action_client = AsyncActionClient("test", TestAction, loop=self.loop)
 
     def tearDown(self):
         self.loop.close()
@@ -35,18 +39,18 @@ class TestActionClient(unittest.TestCase):
 
         def goal_cb(goal):
             goal.set_accepted()
-            for i in range(feedback_up_to):
-                goal.publish_feedback(TestFeedback(i))
+            for idx in range(feedback_up_to):
+                goal.publish_feedback(TestFeedback(idx))
             goal.set_succeeded(result=expected_result)
-        self.action_server.register_goal_callback(goal_cb)
+
+        server = self.create_server("test_success_result", goal_cb)
+        client = AsyncActionClient(server.ns, TestAction, loop=self.loop)
 
         async def run_test():
-            await self.action_client.wait_for_server()
-            goal_handle = self.action_client.send_goal(TestGoal(1))
-            i = 0
-            async for feedback in goal_handle.feedback():
-                self.assertEqual(feedback, TestFeedback(i))
-                i += 1
+            await client.wait_for_server()
+            goal_handle = client.send_goal(TestGoal(1))
+            async for idx, feedback in aiostream.stream.enumerate(goal_handle.feedback()):
+                self.assertEqual(feedback, TestFeedback(idx))
 
             self.assertEqual(GoalStatus.SUCCEEDED, goal_handle.status)
             self.assertEqual(expected_result, goal_handle.result)
@@ -60,24 +64,45 @@ class TestActionClient(unittest.TestCase):
             goal.set_accepted()
             received_accepted.wait()
             goal.set_succeeded(result=TestResult(0))
-        self.action_server.register_goal_callback(goal_cb)
+
+        server = self.create_server("test_wait_for_result", goal_cb)
+        client = AsyncActionClient(server.ns, TestAction, loop=self.loop)
 
         async def run_test():
-            await self.action_client.wait_for_server()
-            goal_handle = self.action_client.send_goal(TestGoal(1))
-            await goal_handle.wait_for_status(GoalStatus.ACTIVE)
+            await client.wait_for_server()
+            goal_handle = client.send_goal(TestGoal(1))
+            await goal_handle.reach_status(GoalStatus.ACTIVE)
 
             received_accepted.set()
 
             with self.assertRaises(RuntimeError):
-                await goal_handle.wait_for_status(GoalStatus.REJECTED)
+                await goal_handle.reach_status(GoalStatus.REJECTED)
 
-            await goal_handle.wait_for_status(GoalStatus.SUCCEEDED)
+            await goal_handle.reach_status(GoalStatus.SUCCEEDED)
 
             with self.assertRaises(RuntimeError):
-                await goal_handle.wait_for_status(GoalStatus.REJECTED)
+                await goal_handle.reach_status(GoalStatus.REJECTED)
 
         self.loop.run_until_complete(run_test())
+
+    def test_ensure(self):
+        def goal_cb(goal):
+            goal.set_accepted()
+
+        server = self.create_server("test_ensure", goal_cb, auto_start=False)
+        client = AsyncActionClient(server.ns, TestAction, loop=self.loop)
+
+        async def run_test():
+            with self.assertRaises(asyncio.TimeoutError):
+                await asyncio.wait_for(client.ensure_goal(TestGoal(), resend_timeout=0.1), timeout=1.0)
+
+            server.start()
+
+            goal_handle = await client.ensure_goal(TestGoal(), resend_timeout=1.0)
+            await goal_handle.reach_status(GoalStatus.ACTIVE)
+
+        self.loop.run_until_complete(run_test())
+
 
 if __name__ == '__main__':
     rostest.rosrun('aiorospy', 'test_action_client', TestActionClient, sys.argv)

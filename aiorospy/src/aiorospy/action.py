@@ -1,13 +1,13 @@
 import asyncio
+import logging
 import janus
 
-from actionlib import ActionClient
-from actionlib import CommState
-from actionlib import SimpleActionClient
-from actionlib import SimpleActionServer
+from actionlib import ActionClient, CommState, GoalStatus, SimpleActionClient, SimpleActionServer
 from actionlib_msgs.msg import GoalStatusArray
 
 from .topic import AsyncSubscriber
+
+logger = logging.getLogger(__name__)
 
 
 class AsyncSimpleActionClient:
@@ -39,10 +39,11 @@ class AsyncSimpleActionServer(SimpleActionServer):
 
 class AsyncGoalHandle:
 
-    def __init__(self, loop=None):
+    def __init__(self, name, loop=None):
         self.status = None
         self.result = None
 
+        self._name = name
         self._transition_q = janus.Queue(loop=loop)
         self._feedback_q = janus.Queue(loop=loop)
         self._old_statuses = set()
@@ -66,13 +67,14 @@ class AsyncGoalHandle:
             else:
                 raise RuntimeError("Unexpected termination condition")
 
-    async def wait_for_status(self, status):
+    async def reach_status(self, status):
         while True:
-            await self._status_event.wait()
             if status in self._old_statuses:
                 return
             elif self._done_event.is_set():
-                raise RuntimeError(f"Action is done, will never reach status {status}")
+                raise RuntimeError(f"Action is done, will never reach status {GoalStatus.to_string(status)}")
+
+            await self._status_event.wait()
 
     async def done(self):
         return self._done_event.wait()
@@ -94,17 +96,22 @@ class AsyncGoalHandle:
     async def _process_transitions(self):
         while not self._done_event.is_set():
             status, comm_state, result = await self._transition_q.async_q.get()
+            logger.debug(f"Action event on {self._name}: status {GoalStatus.to_string(status)} result {result}")
             self._status_event.set()
 
+            self.status = status
             if status not in self._old_statuses:
-                self.status = status
                 self._old_statuses.add(status)
+                # (pbovbel) hack, if you accept a goal too quickly, we never see PENDING status
+                if status == GoalStatus.ACTIVE:
+                    self._old_statuses.add(GoalStatus.PENDING)
 
-            if comm_state == CommState.DONE:
+            if not comm_state == CommState.DONE:
+                # Re-notify awaiters when the next status comes in
+                self._status_event.clear()
+            else:
                 self.result = result
                 self._done_event.set()
-            else:
-                self._status_event.clear()
 
 
 class AsyncActionClient:
@@ -117,7 +124,10 @@ class AsyncActionClient:
         self._status_sub = AsyncSubscriber(name + "/status", GoalStatusArray, loop=self._loop, queue_size=1)
 
     def send_goal(self, goal):
-        async_handle = AsyncGoalHandle(loop=self._loop)
+        """ Send a goal to an action server. As in rospy, if you have not made sure the server is up and listening to
+        the client, the goal will be swallowed.
+        """
+        async_handle = AsyncGoalHandle(name=self.name, loop=self._loop)
         sync_handle = self._client.send_goal(
             goal,
             transition_cb=async_handle._transition_cb,
@@ -126,12 +136,25 @@ class AsyncActionClient:
         async_handle.cancel = sync_handle.cancel
         return async_handle
 
-    async def wait_for_server(self):
+    async def ensure_goal(self, goal, resend_timeout):
+        """ Send a goal to an action server. If the goal is not processed by the action server within processed_timeout,
+        resend the goal.
+        """
         while True:
-            status_message = await self._status_sub.get()
+            await self.wait_for_server()
+            handle = self.send_goal(goal)
+            try:
+                await asyncio.wait_for(handle.reach_status(GoalStatus.PENDING), timeout=resend_timeout)
+            except asyncio.TimeoutError:
+                continue
+            return handle
 
-            # (pbovbel) the below replicates the behavior in actionlib.ActionClient.wait_for_server
-            server_id = status_message._connection_header['callerid']
+
+    async def wait_for_server(self):
+        """ Reserve judgement, this replicates the behavior in actionlib.ActionClient.wait_for_server """
+        async for status_message in self._status_sub.subscribe():
+
+            server_id = status_message._connection_header["callerid"]
             if self._client.pub_goal.impl.has_connection(server_id) and \
                     self._client.pub_cancel.impl.has_connection(server_id):
 
@@ -151,4 +174,4 @@ class AsyncActionClient:
                         feedback_num_pubs += 1
 
                 if status_num_pubs > 0 and result_num_pubs > 0 and feedback_num_pubs > 0:
-                    return True
+                    return

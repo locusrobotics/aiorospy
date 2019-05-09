@@ -2,29 +2,35 @@ import asyncio
 import janus
 import rospy
 
+from functools import partial
+
 
 class AsyncSubscriber:
-
     def __init__(self, name, data_class, queue_size=None, loop=None):
+        self._name = name
+        self._data_class = data_class
+        self._queue_size = queue_size
         self._loop = loop if loop is not None else asyncio.get_running_loop()
-        self._queue = janus.Queue(maxsize=queue_size, loop=loop)
-        self._subscriber = rospy.Subscriber(name, data_class, queue_size=queue_size, callback=self._callback)
-        self.unregister = self._subscriber.unregister
 
-    def _callback(self, msg):
+    # TODO(pbovbel) should we check rospy.is_shutdown() instead of while True?
+    async def subscribe(self):
+        queue = janus.Queue(maxsize=self._queue_size, loop=self._loop)
+        self._subscriber = rospy.Subscriber(
+            self._name, self._data_class, queue_size=self._queue_size, callback=partial(self._callback, queue=queue))
+        while True:
+            yield await queue.async_q.get()
+
+    def _callback(self, msg, queue):
         while True:
             try:
-                self._queue.sync_q.put_nowait(msg)
+                queue.sync_q.put_nowait(msg)
                 break
             except janus.SyncQueueFull:
-                # Drop a message from the queue
+                # Drop a single message from the queue
                 try:
-                    _ = self._queue.sync_q.get()
+                    _ = queue.sync_q.get()
                 except janus.SyncQueueEmpty:
                     pass
-
-    async def get(self):
-        return await self._queue.async_q.get()
 
 
 class AsyncPublisher:
