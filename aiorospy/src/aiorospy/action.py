@@ -9,6 +9,7 @@ from actionlib_msgs.msg import GoalStatusArray
 
 from .topic import AsyncSubscriber
 
+
 class AsyncSimpleActionClient:
 
     def __init__(self, ns, action_spec):
@@ -105,6 +106,7 @@ class AsyncGoalHandle:
             else:
                 self._status_event.clear()
 
+
 class AsyncActionClient:
 
     def __init__(self, name, action_spec, loop=None):
@@ -116,7 +118,8 @@ class AsyncActionClient:
 
     def send_goal(self, goal):
         async_handle = AsyncGoalHandle(loop=self._loop)
-        sync_handle = self._client.send_goal(goal,
+        sync_handle = self._client.send_goal(
+            goal,
             transition_cb=async_handle._transition_cb,
             feedback_cb=async_handle._feedback_cb,
         )
