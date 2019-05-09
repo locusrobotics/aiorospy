@@ -112,7 +112,7 @@ class AsyncActionClient:
 
         self.name = name
         self._client = ActionClient(name, action_spec)
-        self._status_sub = AsyncSubscriber(name + "/status", GoalStatusArray, loop=self._loop)
+        self._status_sub = AsyncSubscriber(name + "/status", GoalStatusArray, loop=self._loop, queue_size=1)
 
     def send_goal(self, goal):
         async_handle = AsyncGoalHandle(loop=self._loop)

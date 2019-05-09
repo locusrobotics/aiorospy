@@ -29,7 +29,7 @@ class TestActionClient(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def test_naive(self):
+    def test_success_result(self):
         expected_result = TestResult(0)
         feedback_up_to = 3
 
