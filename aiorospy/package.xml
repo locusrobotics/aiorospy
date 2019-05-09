@@ -12,6 +12,8 @@
   <exec_depend>actionlib</exec_depend>
   <exec_depend>rospy</exec_depend>
 
+  <test_depend>catkin_virtualenv</test_depend>
+
   <test_depend>roslint</test_depend>
 
   <export>
