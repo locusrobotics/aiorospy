@@ -18,8 +18,16 @@ if(CATKIN_ENABLE_TESTING)
   catkin_generate_virtualenv(
     PYTHON_VERSION 3.7
   )
+  set(python_test_scripts
+    tests/test_action_client
+  )
+
   roslint_python()
+  roslint_python(${python_test_scripts})
   roslint_add_test()
+
+  catkin_install_python(PROGRAMS ${python_test_scripts}
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
   add_rostest(tests/test_action_client.test
     DEPENDENCIES ${PROJECT_NAME}_generate_virtualenv

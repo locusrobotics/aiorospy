@@ -1,9 +1,4 @@
-# from mock import patch
-
-# from aiohttp import web
-# from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop, make_mocked_coro, unused_port
-# from async_exec.api import HttpClient
-
+#!/usr/bin/env python3.7
 import asyncio
 import rospy
 import rostest
