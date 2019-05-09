@@ -67,15 +67,17 @@ class AsyncSimpleActionServer(SimpleActionServer):
 class AsyncGoalHandle:
 
     def __init__(self):
-        self._status_q = janus.Queue()
-        self._feedback_q = janus.Queue()
-        self._old_statuses = set()
         self.status = None
         self.result = None
 
+        self._transition_q = janus.Queue()
+        self._feedback_q = janus.Queue()
+        self._old_statuses = set()
+
         self._done_event = asyncio.Event()
         self._status_event = asyncio.Event()
-        asyncio.create_task(self._process_status())
+
+        asyncio.create_task(self._process_transitions())
 
     async def feedback(self):
         while True:
@@ -107,7 +109,7 @@ class AsyncGoalHandle:
         raise NotImplementedError()
 
     def _transition_cb(self, goal_handle):
-        self._status_q.sync_q.put((
+        self._transition_q.sync_q.put((
             goal_handle.get_goal_status(),
             goal_handle.get_comm_state(),
             goal_handle.get_result()
@@ -116,9 +118,9 @@ class AsyncGoalHandle:
     def _feedback_cb(self, goal_handle, feedback):
         self._feedback_q.sync_q.put(feedback)
 
-    async def _process_status(self):
+    async def _process_transitions(self):
         while not self._done_event.is_set():
-            status, comm_state, result = await self._status_q.async_q.get()
+            status, comm_state, result = await self._transition_q.async_q.get()
             self._status_event.set()
 
             if status not in self._old_statuses:
