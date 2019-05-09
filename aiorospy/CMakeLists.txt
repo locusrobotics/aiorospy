@@ -13,7 +13,7 @@ install(FILES requirements.txt
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 if(CATKIN_ENABLE_TESTING)
-  find_package(catkin REQUIRED COMPONENTS catkin_virtualenv roslint)
+  find_package(catkin REQUIRED COMPONENTS catkin_virtualenv roslint rostest)
 
   catkin_generate_virtualenv(
     PYTHON_VERSION 3.7
@@ -21,7 +21,7 @@ if(CATKIN_ENABLE_TESTING)
   roslint_python()
   roslint_add_test()
 
-  catkin_add_nosetests(tests
+  add_rostest(tests/test_action_client.test
     DEPENDENCIES ${PROJECT_NAME}_generate_virtualenv
   )
 endif()

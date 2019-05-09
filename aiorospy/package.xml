@@ -15,6 +15,7 @@
   <test_depend>catkin_virtualenv</test_depend>
 
   <test_depend>roslint</test_depend>
+  <test_depend>rostest</test_depend>
 
   <export>
     <pip_requirements>requirements.txt</pip_requirements>

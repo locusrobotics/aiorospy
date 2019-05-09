@@ -6,6 +6,8 @@
 
 import asyncio
 import rospy
+import rostest
+import sys
 import time
 import unittest
 
@@ -47,15 +49,12 @@ class TestActionClient(unittest.TestCase):
             i = 0
             async for feedback in goal_handle.feedback():
                 self.assertEqual(feedback, TestFeedback(i))
-                self.assertEqual(True, False)
                 i += 1
 
             self.assertEqual(GoalStatus.SUCCEEDED, goal_handle.status())
             self.assertEqual(expected_result, await goal_handle.result())
-            print("asdf")
 
         self.loop.run_until_complete(run_test())
 
 if __name__ == '__main__':
-    import rosunit
-    rosunit.unitrun('aiorospy', 'test_action_client', TestActionClient)
+    rostest.rosrun('aiorospy', 'test_action_client', TestActionClient, sys.argv)
