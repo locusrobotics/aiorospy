@@ -24,7 +24,7 @@ class TestActionClient(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
-        self.action_client = AsyncActionClient("test", TestAction)
+        self.action_client = AsyncActionClient("test", TestAction, loop=self.loop)
 
     def tearDown(self):
         self.loop.close()
@@ -41,6 +41,7 @@ class TestActionClient(unittest.TestCase):
         self.action_server.register_goal_callback(goal_cb)
 
         async def run_test():
+            await self.action_client.wait_for_server()
             goal_handle = self.action_client.send_goal(TestGoal(1))
             i = 0
             async for feedback in goal_handle.feedback():
@@ -62,6 +63,7 @@ class TestActionClient(unittest.TestCase):
         self.action_server.register_goal_callback(goal_cb)
 
         async def run_test():
+            await self.action_client.wait_for_server()
             goal_handle = self.action_client.send_goal(TestGoal(1))
             await goal_handle.wait_for_status(GoalStatus.ACTIVE)
 

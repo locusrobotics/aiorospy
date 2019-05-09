@@ -5,7 +5,9 @@ from actionlib import ActionClient
 from actionlib import CommState
 from actionlib import SimpleActionClient
 from actionlib import SimpleActionServer
+from actionlib_msgs.msg import GoalStatusArray
 
+from .topic import AsyncSubscriber
 
 class AsyncSimpleActionClient:
 
@@ -33,45 +35,15 @@ class AsyncSimpleActionServer(SimpleActionServer):
         goal = self.accept_new_goal()
         future = asyncio.run_coroutine_threadsafe(self._execute(goal), self._loop)
 
-    # def is_ready(self):
-    #     """ cribbed from actionlib.ActionClient.wait_for_server """
-    #     if self._client.last_status_msg:
-    #         server_id = self._client.last_status_msg._connection_header['callerid']
-
-    #         if self._client.pub_goal.impl.has_connection(server_id) and \
-    #                 self._client.pub_cancel.impl.has_connection(server_id):
-    #             # We'll also check that all of the subscribers have at least
-    #             # one publisher, this isn't a perfect check, but without
-    #             # publisher callbacks... it'll have to do
-    #             status_num_pubs = 0
-    #             for stat in self._client.status_sub.impl.get_stats()[1]:
-    #                 if stat[4]:
-    #                     status_num_pubs += 1
-
-    #             result_num_pubs = 0
-    #             for stat in self._client.result_sub.impl.get_stats()[1]:
-    #                 if stat[4]:
-    #                     result_num_pubs += 1
-
-    #             feedback_num_pubs = 0
-    #             for stat in self._client.feedback_sub.impl.get_stats()[1]:
-    #                 if stat[4]:
-    #                     feedback_num_pubs += 1
-
-    #             if status_num_pubs > 0 and result_num_pubs > 0 and feedback_num_pubs > 0:
-    #                 return True
-
-    #     return False
-
 
 class AsyncGoalHandle:
 
-    def __init__(self):
+    def __init__(self, loop=None):
         self.status = None
         self.result = None
 
-        self._transition_q = janus.Queue()
-        self._feedback_q = janus.Queue()
+        self._transition_q = janus.Queue(loop=loop)
+        self._feedback_q = janus.Queue(loop=loop)
         self._old_statuses = set()
 
         self._done_event = asyncio.Event()
@@ -135,20 +107,45 @@ class AsyncGoalHandle:
 
 class AsyncActionClient:
 
-    def __init__(self, name, action_spec):
+    def __init__(self, name, action_spec, loop=None):
+        self._loop = loop if loop is not None else asyncio.get_running_loop()
+
         self.name = name
         self._client = ActionClient(name, action_spec)
+        self._status_sub = AsyncSubscriber(name + "/status", GoalStatusArray, loop=self._loop)
 
     def send_goal(self, goal):
-
-        # while not self.is_ready():
-        #     await asyncio.sleep(0.1)
-        self._client.wait_for_server() # TODO(pbovbel) replace with async wait
-
-        async_handle = AsyncGoalHandle()
+        async_handle = AsyncGoalHandle(loop=self._loop)
         sync_handle = self._client.send_goal(goal,
             transition_cb=async_handle._transition_cb,
             feedback_cb=async_handle._feedback_cb,
         )
         async_handle.cancel = sync_handle.cancel
         return async_handle
+
+    async def wait_for_server(self):
+        while True:
+            status_message = await self._status_sub.get()
+
+            # (pbovbel) the below replicates the behavior in actionlib.ActionClient.wait_for_server
+            server_id = status_message._connection_header['callerid']
+            if self._client.pub_goal.impl.has_connection(server_id) and \
+                    self._client.pub_cancel.impl.has_connection(server_id):
+
+                status_num_pubs = 0
+                for stat in self._client.status_sub.impl.get_stats()[1]:
+                    if stat[4]:
+                        status_num_pubs += 1
+
+                result_num_pubs = 0
+                for stat in self._client.result_sub.impl.get_stats()[1]:
+                    if stat[4]:
+                        result_num_pubs += 1
+
+                feedback_num_pubs = 0
+                for stat in self._client.feedback_sub.impl.get_stats()[1]:
+                    if stat[4]:
+                        feedback_num_pubs += 1
+
+                if status_num_pubs > 0 and result_num_pubs > 0 and feedback_num_pubs > 0:
+                    return True
