@@ -2,8 +2,9 @@ import asyncio
 import logging
 import janus
 
-from actionlib import ActionClient, CommState, GoalStatus, SimpleActionClient, SimpleActionServer
+from actionlib import ActionServer, ActionClient, CommState, GoalStatus, SimpleActionClient, SimpleActionServer
 from actionlib_msgs.msg import GoalStatusArray
+from functools import partial
 
 from .topic import AsyncSubscriber
 
@@ -117,9 +118,8 @@ class AsyncGoalHandle:
 class AsyncActionClient:
 
     def __init__(self, name, action_spec, loop=None):
-        self._loop = loop if loop is not None else asyncio.get_running_loop()
-
         self.name = name
+        self._loop = loop if loop is not None else asyncio.get_running_loop()
         self._client = ActionClient(name, action_spec)
         self._status_sub = AsyncSubscriber(name + "/status", GoalStatusArray, loop=self._loop, queue_size=1)
 
@@ -137,7 +137,7 @@ class AsyncActionClient:
         return async_handle
 
     async def ensure_goal(self, goal, resend_timeout):
-        """ Send a goal to an action server. If the goal is not processed by the action server within processed_timeout,
+        """ Send a goal to an action server. If the goal is not processed by the action server within resend_timeout,
         resend the goal.
         """
         while True:
@@ -148,7 +148,6 @@ class AsyncActionClient:
             except asyncio.TimeoutError:
                 continue
             return handle
-
 
     async def wait_for_server(self):
         """ Reserve judgement, this replicates the behavior in actionlib.ActionClient.wait_for_server """
@@ -175,3 +174,50 @@ class AsyncActionClient:
 
                 if status_num_pubs > 0 and result_num_pubs > 0 and feedback_num_pubs > 0:
                     return
+
+
+class AsyncActionServer:
+
+    def __init__(self, name, action_spec, coro, loop=None):
+        self.name = name
+        self._loop = loop if loop is not None else asyncio.get_running_loop()
+        self._coro = coro
+        self._tasks = {}
+
+        self._server = ActionServer(
+            name, action_spec, goal_cb=self._goal_cb, cancel_cb=self._cancel_cb, auto_start=False)
+
+        self._server.start()
+
+    def _schedule_goal(self, goal_handle, goal_id):
+        task = asyncio.create_task(self._coro(goal_handle))
+
+        self._tasks[goal_id] = task
+
+        # These methods lead to a terminal status and should cause the goal to become untracked
+        for method in ['set_canceled', 'set_aborted', 'set_rejected', 'set_succeeded']:
+            # print(f"wrapping {method}")
+            # wrapped = getattr(goal_handle, method)
+
+            def wrapper(wrapped, *args, **kwargs):
+                print(f"calling {wrapped.__name__}")
+                del self._tasks[goal_id]
+                wrapped(*args, **kwargs)
+
+            setattr(goal_handle, method, partial(wrapper, wrapped=getattr(goal_handle, method)))
+
+        print("done wrapping")
+
+    def _preempt_goal(self, goal_id):
+        try:
+            self._tasks[goal_id].cancel()
+        except KeyError:
+            logger.error(f"Received cancellation for untracked goal_id {goal_id}")
+
+    def _goal_cb(self, goal_handle):
+        goal_id = goal_handle.get_goal_id().id  # this is locking, should only be called from actionlib thread
+        self._loop.call_soon_threadsafe(self._schedule_goal, goal_handle, goal_id)
+
+    def _cancel_cb(self, goal_handle):
+        goal_id = goal_handle.get_goal_id().id  # this is locking, should only be called from actionlib thread
+        self._loop.call_soon_threadsafe(self._preempt_goal, goal_id)

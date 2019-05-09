@@ -4,7 +4,6 @@ import asyncio
 import rospy
 import rostest
 import sys
-import time
 import unittest
 
 from aiorospy import AsyncActionClient
@@ -17,7 +16,7 @@ class TestActionClient(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        rospy.init_node("test", anonymous=True, disable_signals=True)
+        rospy.init_node("test_action_client", anonymous=True, disable_signals=True)
 
     def create_server(self, ns, goal_cb, auto_start=True):
         action_server = ActionServer(ns, TestAction, goal_cb=goal_cb, auto_start=False)
@@ -37,11 +36,11 @@ class TestActionClient(unittest.TestCase):
         expected_result = TestResult(0)
         feedback_up_to = 3
 
-        def goal_cb(goal):
-            goal.set_accepted()
+        def goal_cb(goal_handle):
+            goal_handle.set_accepted()
             for idx in range(feedback_up_to):
-                goal.publish_feedback(TestFeedback(idx))
-            goal.set_succeeded(result=expected_result)
+                goal_handle.publish_feedback(TestFeedback(idx))
+            goal_handle.set_succeeded(result=expected_result)
 
         server = self.create_server("test_success_result", goal_cb)
         client = AsyncActionClient(server.ns, TestAction, loop=self.loop)
@@ -60,10 +59,10 @@ class TestActionClient(unittest.TestCase):
     def test_wait_for_result(self):
         received_accepted = Event()
 
-        def goal_cb(goal):
-            goal.set_accepted()
+        def goal_cb(goal_handle):
+            goal_handle.set_accepted()
             received_accepted.wait()
-            goal.set_succeeded(result=TestResult(0))
+            goal_handle.set_succeeded(result=TestResult(0))
 
         server = self.create_server("test_wait_for_result", goal_cb)
         client = AsyncActionClient(server.ns, TestAction, loop=self.loop)
@@ -86,8 +85,8 @@ class TestActionClient(unittest.TestCase):
         self.loop.run_until_complete(run_test())
 
     def test_ensure(self):
-        def goal_cb(goal):
-            goal.set_accepted()
+        def goal_cb(goal_handle):
+            goal_handle.set_accepted()
 
         server = self.create_server("test_ensure", goal_cb, auto_start=False)
         client = AsyncActionClient(server.ns, TestAction, loop=self.loop)

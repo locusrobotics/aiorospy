@@ -2,5 +2,6 @@
 <launch>
 
   <test test-name="test_action_client" pkg="aiorospy" type="test_action_client.py"/>
+  <test test-name="test_action_server" pkg="aiorospy" type="test_action_server.py"/>
 
 </launch>
