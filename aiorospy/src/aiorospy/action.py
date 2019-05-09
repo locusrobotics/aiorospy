@@ -67,9 +67,11 @@ class AsyncSimpleActionServer(SimpleActionServer):
 class AsyncGoalHandle:
 
     def __init__(self):
-        self._status = janus.Queue()
-        self._feedback = janus.Queue()
+        self._status_q = janus.Queue()
+        self._feedback_q = janus.Queue()
         self._old_statuses = set()
+        self.status = None
+        self.result = None
 
         self._done_event = asyncio.Event()
         self._status_event = asyncio.Event()
@@ -77,56 +79,57 @@ class AsyncGoalHandle:
 
     async def feedback(self):
         while True:
-            done_action = asyncio.create_task(self._done_event.wait())
-            new_feedback = asyncio.create_task(self._feedback.async_q.get())
+            terminal_status = asyncio.create_task(self._done_event.wait())
+            new_feedback = asyncio.create_task(self._feedback_q.async_q.get())
             done, pending = await asyncio.wait(
-                {done_action, new_feedback},
+                {terminal_status, new_feedback},
                 return_when=asyncio.FIRST_COMPLETED)
             if new_feedback in done:
                 yield new_feedback.result()
-            elif done_action in done:
+            elif terminal_status in done:
                 return
             else:
                 raise RuntimeError("Unexpected termination condition")
 
     async def wait_for_status(self, status):
-        while not self._done_event.is_set():
-            await self._status_event().wait()
+        while True:
+            await self._status_event.wait()
             if status in self._old_statuses:
                 return
-
-        raise RuntimeError(f"Action is done, will never reach status {status}")
+            elif self._done_event.is_set():
+                raise RuntimeError(f"Action is done, will never reach status {status}")
 
     async def done(self):
         return self._done_event.wait()
 
-    def status(self):
-        return self._goal_handle.get_goal_status()
-
-    async def result(self):
-        return self._goal_handle.get_result()
-
     def cancel(self):
-        self._goal_handle.cancel()
+        # This gets injected by AsyncActionClient after init
+        raise NotImplementedError()
 
     def _transition_cb(self, goal_handle):
-        self._status.sync_q.put(goal_handle.get_goal_status())
+        self._status_q.sync_q.put((
+            goal_handle.get_goal_status(),
+            goal_handle.get_comm_state(),
+            goal_handle.get_result()
+        ))
 
     def _feedback_cb(self, goal_handle, feedback):
-        self._feedback.sync_q.put(feedback)
+        self._feedback_q.sync_q.put(feedback)
 
     async def _process_status(self):
         while not self._done_event.is_set():
-            new_status = await self._status.async_q.get()
+            status, comm_state, result = await self._status_q.async_q.get()
+            self._status_event.set()
 
-            if new_status not in self._old_statuses:
-                self._old_statuses.add(new_status)
-                self._status_event.set()
-                self._status_event.clear()
+            if status not in self._old_statuses:
+                self.status = status
+                self._old_statuses.add(status)
 
-            if self._goal_handle.get_comm_state() == CommState.DONE:
+            if comm_state == CommState.DONE:
+                self.result = result
                 self._done_event.set()
-
+            else:
+                self._status_event.clear()
 
 class AsyncActionClient:
 
@@ -145,5 +148,5 @@ class AsyncActionClient:
             transition_cb=async_handle._transition_cb,
             feedback_cb=async_handle._feedback_cb,
         )
-        async_handle._goal_handle = sync_handle
+        async_handle.cancel = sync_handle.cancel
         return async_handle

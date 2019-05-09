@@ -19,7 +19,7 @@ if(CATKIN_ENABLE_TESTING)
     PYTHON_VERSION 3.7
   )
   set(python_test_scripts
-    tests/test_action_client
+    tests/test_action_client.py
   )
 
   roslint_python()
