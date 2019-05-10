@@ -27,7 +27,6 @@ class TestActionClient(unittest.TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
-        # self.action_client = AsyncActionClient("test", TestAction, loop=self.loop)
 
     def tearDown(self):
         self.loop.close()

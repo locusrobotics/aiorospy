@@ -33,5 +33,5 @@ class AsyncSubscriber:
                     pass
 
 
-class AsyncPublisher:
+class AsyncPublisher(rospy.Publisher):
     pass

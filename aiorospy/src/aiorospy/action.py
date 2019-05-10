@@ -194,19 +194,13 @@ class AsyncActionServer:
 
         self._tasks[goal_id] = task
 
+        def untrack_task(wrapped, *args, **kwargs):
+            del self._tasks[goal_id]
+            wrapped(*args, **kwargs)
+
         # These methods lead to a terminal status and should cause the goal to become untracked
         for method in ['set_canceled', 'set_aborted', 'set_rejected', 'set_succeeded']:
-            # print(f"wrapping {method}")
-            # wrapped = getattr(goal_handle, method)
-
-            def wrapper(wrapped, *args, **kwargs):
-                print(f"calling {wrapped.__name__}")
-                del self._tasks[goal_id]
-                wrapped(*args, **kwargs)
-
-            setattr(goal_handle, method, partial(wrapper, wrapped=getattr(goal_handle, method)))
-
-        print("done wrapping")
+            setattr(goal_handle, method, partial(untrack_task, wrapped=getattr(goal_handle, method)))
 
     def _preempt_goal(self, goal_id):
         try:
