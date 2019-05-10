@@ -77,12 +77,18 @@ class AsyncGoalHandle:
 
             await self._status_event.wait()
 
-    async def done(self):
+    async def wait(self):
         return self._done_event.wait()
+
+    def done(self):
+        return self._done_event.is_set()
 
     def cancel(self):
         # This gets injected by AsyncActionClient after init
         raise NotImplementedError()
+
+    def cancelled(self):
+        return self.status in {GoalStatus.PREEMPTED, GoalStatus.PREEMPTING, GoalStatus.RECALLED, GoalStatus.RECALLING}
 
     def _transition_cb(self, goal_handle):
         self._transition_q.sync_q.put((
