@@ -32,7 +32,7 @@ class TestSubscriber(unittest.TestCase):
         to_send = [Int16(idx) for idx in range(message_quantity)]
 
         async def do_pub():
-            pub = rospy.Publisher(sub.name, Int16, queue_size=1)
+            pub = rospy.Publisher(sub.name, Int16, queue_size=message_quantity)
             while pub.get_num_connections() <= 0:
                 await asyncio.sleep(0.1)
 
@@ -47,11 +47,9 @@ class TestSubscriber(unittest.TestCase):
                 if len(received) == len(to_send):
                     break
 
-        self.loop.run_until_complete(
-            asyncio.wait_for(
-                asyncio.gather(do_pub(), run_test(), loop=self.loop), timeout=1
-            )
-        )
+        tasks = asyncio.gather(do_pub(), run_test(), loop=self.loop)
+
+        self.loop.run_until_complete(asyncio.wait_for(tasks, timeout=1))
         self.assertEqual(to_send, received)
 
     def test_subscriber_small_queue(self):
