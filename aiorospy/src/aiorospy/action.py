@@ -52,7 +52,7 @@ class AsyncGoalHandle:
         self._done_event = asyncio.Event()
         self._status_event = asyncio.Event()
 
-        asyncio.create_task(self._process_transitions())
+        self._process_task = asyncio.create_task(self._process_transitions())
 
     async def feedback(self):
         while True:
@@ -190,6 +190,7 @@ class AsyncActionServer:
         self._server.start()
 
     def _schedule_goal(self, goal_handle, goal_id):
+        # TODO(pbovbel) consider wrapping the user's coroutine in a cancellation handler to set_canceled
         task = asyncio.create_task(self._coro(goal_handle))
 
         self._tasks[goal_id] = task
