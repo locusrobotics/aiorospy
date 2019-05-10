@@ -1,0 +1,16 @@
+{
+    "python.pythonPath": "~/locus_dev/devel/share/aiorospy/venv/bin/python",
+    "python.autoComplete.extraPaths": [
+      "${workspaceFolder}"
+    ],
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./aiorospy/tests",
+        "-p",
+        "test*.py"
+    ],
+    "python.testing.pyTestEnabled": false,
+    "python.testing.nosetestsEnabled": false,
+    "python.testing.unittestEnabled": true
+}

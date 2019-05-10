@@ -20,7 +20,7 @@ sub = AsyncSubscriber('chatter', String)
 async def listener():
     while not rospy.is_shutdown():
         message = await sub.get()
-        print(f'I heard: %s'% message.data)
+        print(f'I heard: {message.data}')
 
 if __name__ == '__main__':
     rospy.init_node('example_pubsub', disable_signals=True)

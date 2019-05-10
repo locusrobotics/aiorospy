@@ -13,7 +13,25 @@ install(FILES requirements.txt
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 if(CATKIN_ENABLE_TESTING)
-  find_package(catkin REQUIRED COMPONENTS roslint)
+  find_package(catkin REQUIRED COMPONENTS catkin_virtualenv roslint rostest)
+
+  catkin_generate_virtualenv(
+    PYTHON_VERSION 3.7
+  )
+  set(python_test_scripts
+    tests/test_action_client.py
+    tests/test_action_server.py
+    tests/test_subscriber.py
+  )
+
   roslint_python()
+  roslint_python(${python_test_scripts})
   roslint_add_test()
+
+  catkin_install_python(PROGRAMS ${python_test_scripts}
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+  add_rostest(tests/test_aiorospy.test
+    DEPENDENCIES ${PROJECT_NAME}_generate_virtualenv
+  )
 endif()
