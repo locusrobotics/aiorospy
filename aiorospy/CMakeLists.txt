@@ -21,6 +21,7 @@ if(CATKIN_ENABLE_TESTING)
   set(python_test_scripts
     tests/test_action_client.py
     tests/test_action_server.py
+    tests/test_subscriber.py
   )
 
   roslint_python()
@@ -30,7 +31,7 @@ if(CATKIN_ENABLE_TESTING)
   catkin_install_python(PROGRAMS ${python_test_scripts}
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
-  add_rostest(tests/test_action.test
+  add_rostest(tests/test_aiorospy.test
     DEPENDENCIES ${PROJECT_NAME}_generate_virtualenv
   )
 endif()
