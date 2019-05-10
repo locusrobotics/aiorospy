@@ -92,11 +92,11 @@ class TestActionClient(unittest.TestCase):
 
         async def run_test():
             with self.assertRaises(asyncio.TimeoutError):
-                await asyncio.wait_for(client.ensure_goal(TestGoal(), resend_timeout=0.1), timeout=1.0)
+                await asyncio.wait_for(client.ensure_goal(TestGoal(), resend_timeout=0.1), timeout=1)
 
             server.start()
 
-            goal_handle = await client.ensure_goal(TestGoal(), resend_timeout=1.0)
+            goal_handle = await client.ensure_goal(TestGoal(), resend_timeout=0.1)
             await goal_handle.reach_status(GoalStatus.ACTIVE)
 
         self.loop.run_until_complete(run_test())

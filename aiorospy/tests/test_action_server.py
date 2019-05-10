@@ -42,7 +42,7 @@ class TestActionServer(unittest.TestCase):
         goal_handle = client.send_goal(TestGoal(magic_value))
 
         self.loop.run_until_complete(
-            asyncio.wait_for(self.wait_for_status(goal_handle, GoalStatus.SUCCEEDED), timeout=5))
+            asyncio.wait_for(self.wait_for_status(goal_handle, GoalStatus.SUCCEEDED), timeout=1))
         self.assertEqual(goal_handle.get_goal_status(), GoalStatus.SUCCEEDED)
         self.assertEqual(goal_handle.get_result().result, magic_value)
 
@@ -64,12 +64,12 @@ class TestActionServer(unittest.TestCase):
         goal_handle = client.send_goal(TestGoal())
 
         self.loop.run_until_complete(
-            asyncio.wait_for(self.wait_for_status(goal_handle, GoalStatus.ACTIVE), timeout=5))
+            asyncio.wait_for(self.wait_for_status(goal_handle, GoalStatus.ACTIVE), timeout=1))
 
         goal_handle.cancel()
 
         self.loop.run_until_complete(
-            asyncio.wait_for(self.wait_for_status(goal_handle, GoalStatus.PREEMPTED), timeout=5))
+            asyncio.wait_for(self.wait_for_status(goal_handle, GoalStatus.PREEMPTED), timeout=1))
         self.assertEquals(goal_handle.get_goal_status(), GoalStatus.PREEMPTED)
 
 

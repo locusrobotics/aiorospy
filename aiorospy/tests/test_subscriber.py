@@ -24,11 +24,12 @@ class TestSubscriber(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def test_goal_no_queue(self):
-        sub = AsyncSubscriber("test_goal_succeeded", Int16, loop=self.loop)
-        magic_number = 5
+    def test_subscriber(self):
+        message_quantity = 5
 
-        to_send = [Int16(idx) for idx in range(5)]
+        sub = AsyncSubscriber("test_subscriber", Int16, loop=self.loop)
+
+        to_send = [Int16(idx) for idx in range(message_quantity)]
 
         async def do_pub():
             pub = rospy.Publisher(sub.name, Int16, queue_size=1)
@@ -48,10 +49,40 @@ class TestSubscriber(unittest.TestCase):
 
         self.loop.run_until_complete(
             asyncio.wait_for(
-                asyncio.gather(do_pub(), run_test(), loop=self.loop), 5
+                asyncio.gather(do_pub(), run_test(), loop=self.loop), timeout=1
             )
         )
         self.assertEqual(to_send, received)
+
+    def test_subscriber_small_queue(self):
+        queue_size = 5
+
+        sub = AsyncSubscriber("test_subscriber_small_queue", Int16, queue_size=queue_size, loop=self.loop)
+        to_send = [Int16(idx) for idx in range(10)]
+
+        async def do_pub():
+            pub = rospy.Publisher(sub.name, Int16, queue_size=queue_size)
+            while pub.get_num_connections() <= 0:
+                await asyncio.sleep(1)
+
+            for msg in to_send:
+                pub.publish(msg)
+
+        received = []
+
+        async def run_test():
+            async for msg in sub.subscribe():
+                received.append(msg)
+
+        tasks = asyncio.gather(do_pub(), run_test(), loop=self.loop)
+
+        with self.assertRaises(asyncio.TimeoutError):
+            self.loop.run_until_complete(asyncio.wait_for(tasks, timeout=1))
+
+        with self.assertRaises((asyncio.CancelledError, asyncio.TimeoutError)):
+            tasks.result()
+
+        self.assertEqual(len(received), queue_size)
 
 
 if __name__ == '__main__':
