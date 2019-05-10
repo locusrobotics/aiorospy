@@ -38,7 +38,7 @@ class AsyncSimpleActionServer(SimpleActionServer):
         future = asyncio.run_coroutine_threadsafe(self._execute(goal), self._loop)
 
 
-class AsyncGoalHandle:
+class _AsyncGoalHandle:
 
     def __init__(self, name, loop=None):
         self.status = None
@@ -49,12 +49,15 @@ class AsyncGoalHandle:
         self._feedback_q = janus.Queue(loop=loop)
         self._old_statuses = set()
 
-        self._done_event = asyncio.Event()
-        self._status_event = asyncio.Event()
+        self._done_event = asyncio.Event(loop=loop)
+        self._status_event = asyncio.Event(loop=loop)
 
         self._process_task = asyncio.create_task(self._process_transitions())
 
     async def feedback(self):
+        """ Async generator providing feedback from the goal. The generator terminates when the goal
+        is done.
+        """
         while True:
             terminal_status = asyncio.create_task(self._done_event.wait())
             new_feedback = asyncio.create_task(self._feedback_q.async_q.get())
@@ -69,6 +72,7 @@ class AsyncGoalHandle:
                 raise RuntimeError("Unexpected termination condition")
 
     async def reach_status(self, status):
+        """ Await until the goal reaches a particular status. """
         while True:
             if status in self._old_statuses:
                 return
@@ -78,16 +82,20 @@ class AsyncGoalHandle:
             await self._status_event.wait()
 
     async def wait(self):
+        """ Await until the goal terminates. """
         return self._done_event.wait()
 
     def done(self):
+        """ Specifies if the goal is terminated. """
         return self._done_event.is_set()
 
     def cancel(self):
+        """ Cancel the goal. """
         # This gets injected by AsyncActionClient after init
         raise NotImplementedError()
 
     def cancelled(self):
+        """ Specifies if the goal has been cancelled. """
         return self.status in {GoalStatus.PREEMPTED, GoalStatus.PREEMPTING, GoalStatus.RECALLED, GoalStatus.RECALLING}
 
     def _transition_cb(self, goal_handle):
@@ -110,6 +118,7 @@ class AsyncGoalHandle:
             if status not in self._old_statuses:
                 self._old_statuses.add(status)
                 # (pbovbel) hack, if you accept a goal too quickly, we never see PENDING status
+                # this is probably an issue elsewhere, and a DAG of action states would be great to have.
                 if status == GoalStatus.ACTIVE:
                     self._old_statuses.add(GoalStatus.PENDING)
 
@@ -122,6 +131,7 @@ class AsyncGoalHandle:
 
 
 class AsyncActionClient:
+    """ Async wrapper around the action client API. """
 
     def __init__(self, name, action_spec, loop=None):
         self.name = name
@@ -133,7 +143,7 @@ class AsyncActionClient:
         """ Send a goal to an action server. As in rospy, if you have not made sure the server is up and listening to
         the client, the goal will be swallowed.
         """
-        async_handle = AsyncGoalHandle(name=self.name, loop=self._loop)
+        async_handle = _AsyncGoalHandle(name=self.name, loop=self._loop)
         sync_handle = self._client.send_goal(
             goal,
             transition_cb=async_handle._transition_cb,
@@ -183,8 +193,10 @@ class AsyncActionClient:
 
 
 class AsyncActionServer:
+    """ Async wrapper around the action server API. """
 
     def __init__(self, name, action_spec, coro, loop=None):
+        """ Initialize an action server. Incoming goals will be processed via the speficied coroutine. """
         self.name = name
         self._loop = loop if loop is not None else asyncio.get_running_loop()
         self._coro = coro

@@ -7,6 +7,7 @@ from functools import partial
 
 class AsyncSubscriber:
     def __init__(self, name, data_class, queue_size=None, loop=None):
+        """ Create an asynchronous subscriber. """
         self.name = name
         self._data_class = data_class
         self._queue_size = queue_size
@@ -14,6 +15,7 @@ class AsyncSubscriber:
 
     # TODO(pbovbel) should we check rospy.is_shutdown() instead of while True?
     async def subscribe(self):
+        """ Generator to pull messages from a subscription. """
         queue = janus.Queue(
             maxsize=self._queue_size if self._queue_size is not None else 0,
             loop=self._loop)
