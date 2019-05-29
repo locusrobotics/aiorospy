@@ -42,12 +42,11 @@ pub = rospy.Publisher('ping', String, queue_size=1)
 
 async def send_ping():
     while True:
-        self.pub.publish(f'Ping!')
+        pub.publish(f'Ping!')
         await asyncio.sleep(1)
 
 async def receive_ping():
-    while True:
-        message = await self.sub.get()
+    async for message in sub.subscribe():
         print(f'Received: {message.data}')
 
 if __name__ == '__main__':
