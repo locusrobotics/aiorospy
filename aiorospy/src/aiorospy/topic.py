@@ -1,8 +1,9 @@
 import asyncio
-import janus
+from functools import partial
+
 import rospy
 
-from functools import partial
+import janus
 
 
 class AsyncSubscriber:
@@ -11,7 +12,7 @@ class AsyncSubscriber:
         self.name = name
         self._data_class = data_class
         self._queue_size = queue_size
-        self._loop = loop if loop is not None else asyncio.get_running_loop()
+        self._loop = loop if loop is not None else asyncio.get_event_loop()
 
     # TODO(pbovbel) should we check rospy.is_shutdown() instead of while True?
     async def subscribe(self):

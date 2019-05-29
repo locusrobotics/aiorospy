@@ -1,10 +1,11 @@
 import asyncio
 import logging
-import janus
-
-from actionlib import ActionServer, ActionClient, CommState, GoalStatus, SimpleActionClient, SimpleActionServer
-from actionlib_msgs.msg import GoalStatusArray
 from functools import partial
+
+from actionlib import ActionClient, ActionServer, CommState, GoalStatus, SimpleActionClient, SimpleActionServer
+from actionlib_msgs.msg import GoalStatusArray
+
+import janus
 
 from .topic import AsyncSubscriber
 
@@ -135,7 +136,7 @@ class AsyncActionClient:
 
     def __init__(self, name, action_spec, loop=None):
         self.name = name
-        self._loop = loop if loop is not None else asyncio.get_running_loop()
+        self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._client = ActionClient(name, action_spec)
         self._status_sub = AsyncSubscriber(name + "/status", GoalStatusArray, loop=self._loop, queue_size=1)
 
@@ -198,7 +199,7 @@ class AsyncActionServer:
     def __init__(self, name, action_spec, coro, loop=None):
         """ Initialize an action server. Incoming goals will be processed via the speficied coroutine. """
         self.name = name
-        self._loop = loop if loop is not None else asyncio.get_running_loop()
+        self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._coro = coro
         self._tasks = {}
 
