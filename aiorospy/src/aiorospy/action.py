@@ -84,7 +84,7 @@ class _AsyncGoalHandle:
 
     async def wait(self):
         """ Await until the goal terminates. """
-        return self._done_event.wait()
+        return await self._done_event.wait()
 
     def done(self):
         """ Specifies if the goal is terminated. """
