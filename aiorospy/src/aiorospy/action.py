@@ -163,7 +163,12 @@ class AsyncActionClient:
             try:
                 await asyncio.wait_for(handle.reach_status(GoalStatus.PENDING), timeout=resend_timeout)
             except asyncio.TimeoutError:
+                logger.warn(f"Action goal for {self.name} was not processed within timeout, resending")
+                handle.cancel()
                 continue
+            except asyncio.CancelledError:
+                handle.cancel()
+                raise
             return handle
 
     async def wait_for_server(self):
