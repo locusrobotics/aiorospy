@@ -8,6 +8,7 @@ from actionlib_msgs.msg import GoalStatusArray
 import janus
 
 from .topic import AsyncSubscriber
+from .helpers import ExceptionMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -39,21 +40,6 @@ class AsyncSimpleActionServer(SimpleActionServer):
     def _execute_cb(self):
         goal = self.accept_new_goal()
         future = asyncio.run_coroutine_threadsafe(self._execute(goal), self._loop)
-
-
-# TODO(pbovbel This could be a mixin or some kind of helper object, that acts as an exception sync around a Janus
-# queue.
-async def _monitor_exceptions(exc_q):
-    try:
-        while True:
-            exc = await exc_q.async_q.get()
-            raise exc
-    except asyncio.CancelledError as e_cancelled:
-        try:
-            exc = exc_q.async_q.get_nowait()
-            raise exc
-        except asyncio.QueueEmpty:
-            raise e_cancelled
 
 
 class _AsyncGoalHandle:
@@ -156,12 +142,12 @@ class AsyncActionClient:
         self.name = name
         self.action_spec = action_spec
         self._loop = loop if loop is not None else asyncio.get_event_loop()
-        self._exc_q = janus.Queue(loop=loop)
-
-    async def start(self):
         self._client = ActionClient(self.name, self.action_spec)
         self._status_sub = AsyncSubscriber(self.name + "/status", GoalStatusArray, loop=self._loop, queue_size=1)
-        await _monitor_exceptions(self._exc_q)
+        self._exception_monitor = ExceptionMonitor(loop=loop)
+
+    async def start(self):
+        await self._exception_monitor.start()
 
     def send_goal(self, goal):
         """ Send a goal to an action server. As in rospy, if you have not made sure the server is up and listening to
@@ -175,18 +161,9 @@ class AsyncActionClient:
         )
         async_handle.cancel = sync_handle.cancel
         task = asyncio.create_task(async_handle.start())
-        task.add_done_callback(self._task_done_callback)
+        self._exception_monitor.register_task(task)
 
         return async_handle
-
-    def _task_done_callback(self, task):
-        try:
-            exc = task.exception()
-        except asyncio.CancelledError:
-            pass
-        else:
-            if exc is not None:
-                self._exc_q.sync_q.put(exc)
 
     async def ensure_goal(self, goal, resend_timeout):
         """ Send a goal to an action server. If the goal is not processed by the action server within resend_timeout,
@@ -243,7 +220,7 @@ class AsyncActionServer:
         self._coro = coro
         self._tasks = {}
 
-        self._exc_q = janus.Queue(loop=loop)
+        self._exception_monitor = ExceptionMonitor()
         self._goal_q = janus.Queue(loop=loop)
         self._cancel_q = janus.Queue(loop=loop)
 
@@ -256,7 +233,7 @@ class AsyncActionServer:
         await asyncio.gather(
             self._process_goals(),
             self._process_cancels(),
-            _monitor_exceptions(self._exc_q)
+            self._exception_monitor.start()
         )
 
     async def _process_goals(self):
@@ -265,6 +242,7 @@ class AsyncActionServer:
 
             task = asyncio.create_task(self._coro(goal_handle))
             task.add_done_callback(partial(self._task_done_callback, goal_id=goal_id))
+            self._exception_monitor.register_task(task)
 
             self._tasks[goal_id] = task
 
@@ -282,14 +260,6 @@ class AsyncActionServer:
             del self._tasks[goal_id]
         except KeyError:
             pass
-
-        try:
-            exc = task.exception()
-        except asyncio.CancelledError:
-            pass
-        else:
-            if exc is not None:
-                self._exc_q.sync_q.put(exc)
 
     def _goal_cb(self, goal_handle):
         goal_id = goal_handle.get_goal_id().id  # this is locking, should only be called from actionlib thread
