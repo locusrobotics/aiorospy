@@ -41,6 +41,8 @@ class AsyncSimpleActionServer(SimpleActionServer):
         future = asyncio.run_coroutine_threadsafe(self._execute(goal), self._loop)
 
 
+# TODO(pbovbel This could be a mixin or some kind of helper object, that acts as an exception sync around a Janus
+# queue.
 async def _monitor_exceptions(exc_q):
     try:
         while True:
@@ -152,12 +154,13 @@ class AsyncActionClient:
 
     def __init__(self, name, action_spec, loop=None):
         self.name = name
+        self.action_spec = action_spec
         self._loop = loop if loop is not None else asyncio.get_event_loop()
-        self._client = ActionClient(name, action_spec)
-        self._status_sub = AsyncSubscriber(name + "/status", GoalStatusArray, loop=self._loop, queue_size=1)
         self._exc_q = janus.Queue(loop=loop)
 
-    def start(self):
+    async def start(self):
+        self._client = ActionClient(self.name, self.action_spec)
+        self._status_sub = AsyncSubscriber(self.name + "/status", GoalStatusArray, loop=self._loop, queue_size=1)
         await _monitor_exceptions(self._exc_q)
 
     def send_goal(self, goal):

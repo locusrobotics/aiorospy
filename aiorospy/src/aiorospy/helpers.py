@@ -4,11 +4,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def stop_on_exception_handler(loop):
-    def handler(_, context):
-        loop.default_exception_handler(context)
+def stop_on_exception_handler(loop, context):
+    loop.default_exception_handler(context)
+    if loop.is_running():
         loop.stop()
-    return handler
 
 
 async def stop_loop_on_exception(awaitable):
@@ -48,4 +47,5 @@ def cancel_all_tasks(loop):
 
 def cancel_on_exception_handler(loop, context, task):
     loop.default_exception_handler(context)
-    task.cancel()
+    if not task.cancelled():
+        task.cancel()
