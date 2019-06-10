@@ -12,6 +12,7 @@ from .topic import AsyncSubscriber
 logger = logging.getLogger(__name__)
 
 
+# TODO(pbovbel) remove simple clients
 class AsyncSimpleActionClient:
 
     def __init__(self, ns, action_spec):
@@ -26,6 +27,7 @@ class AsyncSimpleActionClient:
         return self._client.get_state(), self._client.get_result()
 
 
+# TODO(pbovbel) remove simple clients
 class AsyncSimpleActionServer(SimpleActionServer):
 
     def __init__(self, ns, action_spec, execute, loop=None):
@@ -37,6 +39,19 @@ class AsyncSimpleActionServer(SimpleActionServer):
     def _execute_cb(self):
         goal = self.accept_new_goal()
         future = asyncio.run_coroutine_threadsafe(self._execute(goal), self._loop)
+
+
+async def _monitor_exceptions(exc_q):
+    try:
+        while True:
+            exc = await exc_q.async_q.get()
+            raise exc
+    except asyncio.CancelledError as e_cancelled:
+        try:
+            exc = exc_q.async_q.get_nowait()
+            raise exc
+        except asyncio.QueueEmpty:
+            raise e_cancelled
 
 
 class _AsyncGoalHandle:
@@ -53,7 +68,8 @@ class _AsyncGoalHandle:
         self._done_event = asyncio.Event(loop=loop)
         self._status_event = asyncio.Event(loop=loop)
 
-        self._process_task = asyncio.create_task(self._process_transitions())
+    async def start(self):
+        await self._process_transitions()
 
     async def feedback(self):
         """ Async generator providing feedback from the goal. The generator terminates when the goal
@@ -139,6 +155,10 @@ class AsyncActionClient:
         self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._client = ActionClient(name, action_spec)
         self._status_sub = AsyncSubscriber(name + "/status", GoalStatusArray, loop=self._loop, queue_size=1)
+        self._exc_q = janus.Queue(loop=loop)
+
+    def start(self):
+        await _monitor_exceptions(self._exc_q)
 
     def send_goal(self, goal):
         """ Send a goal to an action server. As in rospy, if you have not made sure the server is up and listening to
@@ -151,7 +171,20 @@ class AsyncActionClient:
             feedback_cb=async_handle._feedback_cb,
         )
         async_handle.cancel = sync_handle.cancel
+        task = asyncio.create_task(async_handle.start())
+        task.add_done_callback(self._task_done_callback)
+
         return async_handle
+
+    def _task_done_callback(self, task):
+        try:
+            exc = task.exception()
+        except asyncio.CancelledError:
+            pass
+        else:
+            print(exc)
+            if exc is not None:
+                self._exc_q.sync_q.put(exc)
 
     async def ensure_goal(self, goal, resend_timeout):
         """ Send a goal to an action server. If the goal is not processed by the action server within resend_timeout,
@@ -201,42 +234,66 @@ class AsyncActionClient:
 class AsyncActionServer:
     """ Async wrapper around the action server API. """
 
-    def __init__(self, name, action_spec, coro, loop=None):
+    def __init__(self, name, action_spec, coro, loop=None, ):
         """ Initialize an action server. Incoming goals will be processed via the speficied coroutine. """
         self.name = name
         self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._coro = coro
         self._tasks = {}
 
+        self._exc_q = janus.Queue(loop=loop)
+        self._goal_q = janus.Queue(loop=loop)
+        self._cancel_q = janus.Queue(loop=loop)
+
         self._server = ActionServer(
             name, action_spec, goal_cb=self._goal_cb, cancel_cb=self._cancel_cb, auto_start=False)
 
+    async def start(self):
+        # TODO(pbovbel) actionservers don't stop and cause the program to not terminate
         self._server.start()
+        await asyncio.gather(
+            self._process_goals(),
+            self._process_cancels(),
+            _monitor_exceptions(self._exc_q)
+        )
 
-    def _schedule_goal(self, goal_handle, goal_id):
-        # TODO(pbovbel) consider wrapping the user's coroutine in a cancellation handler to set_canceled
-        task = asyncio.create_task(self._coro(goal_handle))
+    async def _process_goals(self):
+        while True:
+            goal_handle, goal_id = await self._goal_q.async_q.get()
 
-        self._tasks[goal_id] = task
+            task = asyncio.create_task(self._coro(goal_handle))
+            task.add_done_callback(partial(self._task_done_callback, goal_id=goal_id))
 
-        def untrack_task(wrapped, *args, **kwargs):
-            del self._tasks[goal_id]
-            wrapped(*args, **kwargs)
+            self._tasks[goal_id] = task
 
-        # These methods lead to a terminal status and should cause the goal to become untracked
-        for method in ['set_canceled', 'set_aborted', 'set_rejected', 'set_succeeded']:
-            setattr(goal_handle, method, partial(untrack_task, wrapped=getattr(goal_handle, method)))
+    async def _process_cancels(self):
+        while True:
+            goal_id = await self._cancel_q.async_q.get()
+            try:
+                self._tasks[goal_id].cancel()
+            except KeyError:
+                logger.error(f"Received cancellation for untracked goal_id {goal_id}")
 
-    def _preempt_goal(self, goal_id):
+
+    def _task_done_callback(self, task, goal_id):
         try:
-            self._tasks[goal_id].cancel()
+            del self._tasks[goal_id]
         except KeyError:
-            logger.error(f"Received cancellation for untracked goal_id {goal_id}")
+            pass
+
+        try:
+            exc = task.exception()
+        except asyncio.CancelledError:
+            pass
+        else:
+            print(exc)
+            if exc is not None:
+                self._exc_q.sync_q.put(exc)
 
     def _goal_cb(self, goal_handle):
         goal_id = goal_handle.get_goal_id().id  # this is locking, should only be called from actionlib thread
-        self._loop.call_soon_threadsafe(self._schedule_goal, goal_handle, goal_id)
+        self._goal_q.sync_q.put((goal_handle, goal_id))
 
     def _cancel_cb(self, goal_handle):
         goal_id = goal_handle.get_goal_id().id  # this is locking, should only be called from actionlib thread
-        self._loop.call_soon_threadsafe(self._preempt_goal, goal_id)
+        self._cancel_q.sync_q.put(goal_id)
