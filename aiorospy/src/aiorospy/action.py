@@ -185,7 +185,6 @@ class AsyncActionClient:
         except asyncio.CancelledError:
             pass
         else:
-            print(exc)
             if exc is not None:
                 self._exc_q.sync_q.put(exc)
 
@@ -289,7 +288,6 @@ class AsyncActionServer:
         except asyncio.CancelledError:
             pass
         else:
-            print(exc)
             if exc is not None:
                 self._exc_q.sync_q.put(exc)
 
