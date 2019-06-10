@@ -56,8 +56,9 @@ class ExceptionMonitor:
     """ Monitor exceptions in background tasks so they don't get swallowed.
     """
 
-    def __init__(self, loop):
-        self._exception_q = janus.Queue(loop=loop)
+    def __init__(self, loop=None):
+        self._loop = loop if loop is not None else asyncio.get_event_loop()
+        self._exception_q = janus.Queue(loop=self._loop)
 
     async def start(self):
         try:
@@ -73,6 +74,10 @@ class ExceptionMonitor:
 
     def register_task(self, task):
         task.add_done_callback(self._task_done_callback)
+
+    def register_tasks(self, tasks):
+        for task in tasks:
+            self.register_task(task)
 
     def _task_done_callback(self, task):
         try:
