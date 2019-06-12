@@ -22,11 +22,11 @@ Asyncio was added to the Python 3.5 standard library on a provisional bases, for
 Asyncio does not exist in Python 2 and is only provisional in Python 3.5.  If you're using Xenial, you can install it using the [deadsnakes](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa) ppa.
 
 ### [catkin_virtualenv](https://github.com/locusrobotics/catkin_virtualenv)
-Simplifies dependency management and makes using a different version of python pretty easy. Check `requirements.txt` to see what dependencies are used when this package is built.
+Simplifies dependency management and makes using a different version of python pretty easy. Check `requirements.txt` to see what additional dependencies are used when this package is built.
 
 ## Examples
 
-Check out the `scripts` folder for examples of topics, services, actions, and a composite node.
+Check out the [`asyncio_examples/scripts`](https://github.com/locusrobotics/aiorospy/tree/master/aiorospy_examples/scripts) folder for examples of topics, services, actions, and a composite node.
 
 Take note that when using` rospy` and `asyncio` together, the following boilerplate is recommended:
 
