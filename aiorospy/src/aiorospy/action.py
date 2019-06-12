@@ -127,9 +127,9 @@ class AsyncActionClient:
         await self._started.wait()
         while True:
             # Use a small timeout so that the execution can be cancelled if necessary
-            started = await self._loop.run_in_executor(None, self._client.wait_for_server, rospy.Duration(0.1))
-            if started:
-                return started
+            connected = await self._loop.run_in_executor(None, self._client.wait_for_server, rospy.Duration(0.1))
+            if connected:
+                return connected
 
     async def send_goal(self, goal):
         """ Send a goal to an action server. As in rospy, if you have not made sure the server is up and listening to

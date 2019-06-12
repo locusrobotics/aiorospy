@@ -3,18 +3,28 @@ import concurrent.futures
 import logging
 
 import janus
+import rospy
 
 logger = logging.getLogger(__name__)
 
 
-def cancel_on_exception_handler(loop, context, task):
-    loop.default_exception_handler(context)
-    if not task.cancelled():
-        task.cancel()
+def cancel_on_shutdown(task, loop=None):
+    loop = loop if loop is not None else asyncio.get_event_loop()
+    rospy.on_shutdown(lambda: loop.call_soon_threadsafe(task.cancel))
+
+
+def cancel_on_exception(task, loop=None):
+    def handler(loop, context):
+        loop.default_exception_handler(context)
+        if not task.cancelled():
+            task.cancel()
+
+    loop = loop if loop is not None else asyncio.get_event_loop()
+    loop.set_exception_handler(handler)
 
 
 class ExceptionMonitor:
-    """ Monitor exceptions in background tasks so they don't get swallowed.
+    """ Monitor exceptions in background tasks so they don't get ignored.
     """
 
     def __init__(self, loop=None):
@@ -23,34 +33,35 @@ class ExceptionMonitor:
         self._exception_q = janus.Queue(loop=self._loop)
 
     async def start(self):
+        """ Monitor registered background tasks, and raise their exceptions.
+        """
         try:
             while True:
                 exc = await self._exception_q.async_q.get()
                 raise exc
+
         except asyncio.CancelledError as e_cancelled:
             # Cancel any tasks that will no longer be monitored
             while self._pending_tasks:
                 task = self._pending_tasks.pop()
                 if not task.cancelled():
                     task.cancel()
-                try:
-                    await task
-                except Exception:  # Let the task_done_callback process task exceptions as normal
-                    pass
+                await task
+            raise
 
+        finally:
             try:
                 exc = self._exception_q.async_q.get_nowait()
                 raise exc
             except asyncio.QueueEmpty:
-                raise e_cancelled
+                pass
 
     def register_task(self, task):
+        """ Register a task with the exception monitor. If the exception monitor is shutdown, all registered
+        tasks will be cancelled.
+        """
         task.add_done_callback(self._task_done_callback)
         self._pending_tasks.add(task)
-
-    def register_tasks(self, tasks):
-        for task in tasks:
-            self.register_task(task)
 
     def _task_done_callback(self, task):
         try:
