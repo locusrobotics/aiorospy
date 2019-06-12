@@ -18,7 +18,12 @@ class AsyncServiceProxy:
 
     async def wait_for_service(self):
         """ Wait for a ROS service to be available. """
-        return await self._loop.run_in_executor(None, self._srv_proxy.wait_for_service)
+        while True:
+            try:
+                # Use a small timeout so the execution can be cancelled if necessary
+                return await self._loop.run_in_executor(None, self._srv_proxy.wait_for_service, 0.1)
+            except rospy.ROSException:
+                continue
 
     async def send(self, *args, **kwargs):
         """ Send a request to a ROS service. """

@@ -3,6 +3,7 @@ import logging
 from functools import partial
 
 import janus
+import rospy
 from actionlib import (ActionClient, ActionServer, CommState, GoalStatus,
                        SimpleActionClient, SimpleActionServer)
 from actionlib_msgs.msg import GoalStatusArray
@@ -155,7 +156,11 @@ class AsyncActionClient:
             return handle
 
     async def wait_for_server(self):
-        return await self._loop.run_in_executor(None, self._client.wait_for_server)
+        while True:
+            # Use a small timeout so that the execution can be cancelled if necessary
+            started = await self._loop.run_in_executor(None, self._client.wait_for_server, rospy.Duration(0.1))
+            if started:
+                return started
 
 
 class AsyncActionServer:
