@@ -2,13 +2,13 @@ import asyncio
 import logging
 from functools import partial
 
-from actionlib import ActionClient, ActionServer, CommState, GoalStatus, SimpleActionClient, SimpleActionServer
+import janus
+from actionlib import (ActionClient, ActionServer, CommState, GoalStatus,
+                       SimpleActionClient, SimpleActionServer)
 from actionlib_msgs.msg import GoalStatusArray
 
-import janus
-
-from .topic import AsyncSubscriber
 from .helpers import ExceptionMonitor
+from .topic import AsyncSubscriber
 
 logger = logging.getLogger(__name__)
 

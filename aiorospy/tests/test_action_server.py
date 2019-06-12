@@ -1,13 +1,14 @@
 #!/usr/bin/env python3.7
 import asyncio
-import rospy
-import rostest
 import sys
 import unittest
 
-from aiorospy import AsyncActionServer
-from actionlib import ActionClient as SyncActionClient, GoalStatus
+import rospy
+import rostest
+from actionlib import ActionClient as SyncActionClient
+from actionlib import GoalStatus
 from actionlib.msg import TestAction, TestGoal, TestResult
+from aiorospy import AsyncActionServer
 
 
 class TestActionServer(unittest.TestCase):

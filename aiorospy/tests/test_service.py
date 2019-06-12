@@ -1,14 +1,13 @@
 #!/usr/bin/env python3.7
-import aiounittest
 import asyncio
-import rospy
-import rostest
 import sys
 import unittest
 
-from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
-
+import aiounittest
+import rospy
+import rostest
 from aiorospy import AsyncService
+from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
 
 
 class TestServiceProxy(aiounittest.AsyncTestCase):
@@ -22,6 +21,7 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
 
     async def test_service_normal(self):
         loop = asyncio.get_running_loop()
+
         async def callback(req):
             return SetBoolResponse(success=req.data)
 
@@ -36,6 +36,7 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
 
     async def test_service_exception(self):
         loop = asyncio.get_running_loop()
+
         async def callback(req):
             raise RuntimeError()
 
@@ -49,6 +50,7 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
 
         with self.assertRaises(RuntimeError):
             await server_task
+
 
 if __name__ == '__main__':
     rostest.rosrun('aiorospy', 'test_service_proxy', TestServiceProxy, sys.argv)

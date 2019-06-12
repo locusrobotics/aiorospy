@@ -1,8 +1,8 @@
 import asyncio
+from functools import partial
+
 import janus
 import rospy
-
-from functools import partial
 
 
 class AsyncSubscriber:

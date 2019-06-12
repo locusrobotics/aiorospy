@@ -1,7 +1,8 @@
 import asyncio
 import concurrent.futures
-import janus
 import logging
+
+import janus
 
 logger = logging.getLogger(__name__)
 

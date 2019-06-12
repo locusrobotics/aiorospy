@@ -1,15 +1,14 @@
 #!/usr/bin/env python3.7
-import aiounittest
-import aiostream
 import asyncio
-import rospy
-import rostest
 import sys
 import unittest
 
-from std_msgs.msg import Int16
-
+import aiostream
+import aiounittest
+import rospy
+import rostest
 from aiorospy import AsyncSubscriber
+from std_msgs.msg import Int16
 
 
 class TestSubscriber(aiounittest.AsyncTestCase):

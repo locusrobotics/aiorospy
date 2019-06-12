@@ -1,14 +1,13 @@
 #!/usr/bin/env python3.7
-import aiounittest
 import asyncio
-import rospy
-import rostest
 import sys
 import unittest
 
-from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
-
+import aiounittest
+import rospy
+import rostest
 from aiorospy import AsyncServiceProxy
+from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
 
 
 class TestServiceProxy(aiounittest.AsyncTestCase):
@@ -27,6 +26,7 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
         client = AsyncServiceProxy("test_service", SetBool, asyncio.get_event_loop())
         response = await client.ensure(True)
         self.assertEquals(True, response.success)
+
 
 if __name__ == '__main__':
     rostest.rosrun('aiorospy', 'test_service_proxy', TestServiceProxy, sys.argv)

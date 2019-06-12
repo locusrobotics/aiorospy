@@ -1,11 +1,11 @@
 
 import asyncio
 import logging
-import rospy
 import sys
 
-from .helpers import ExceptionMonitor
+import rospy
 
+from .helpers import ExceptionMonitor
 
 logger = logging.getLogger(__name__)
 
