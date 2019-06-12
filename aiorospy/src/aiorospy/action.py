@@ -231,7 +231,6 @@ class AsyncActionServer:
             except KeyError:
                 logger.error(f"Received cancellation for untracked goal_id {goal_id}")
 
-
     def _task_done_callback(self, task, goal_id):
         try:
             del self._tasks[goal_id]

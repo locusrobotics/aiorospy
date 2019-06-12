@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures
 import janus
 import logging
 
@@ -82,7 +83,7 @@ class ExceptionMonitor:
     def _task_done_callback(self, task):
         try:
             exc = task.exception()
-        except asyncio.CancelledError:
+        except (concurrent.futures.CancelledError, asyncio.CancelledError):
             pass
         else:
             if exc is not None:
