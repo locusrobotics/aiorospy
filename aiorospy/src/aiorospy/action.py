@@ -184,30 +184,7 @@ class AsyncActionClient:
             return handle
 
     async def wait_for_server(self):
-        """ Reserve judgement, this replicates the behavior in actionlib.ActionClient.wait_for_server """
-        async for status_message in self._status_sub.subscribe():
-
-            server_id = status_message._connection_header["callerid"]
-            if self._client.pub_goal.impl.has_connection(server_id) and \
-                    self._client.pub_cancel.impl.has_connection(server_id):
-
-                status_num_pubs = 0
-                for stat in self._client.status_sub.impl.get_stats()[1]:
-                    if stat[4]:
-                        status_num_pubs += 1
-
-                result_num_pubs = 0
-                for stat in self._client.result_sub.impl.get_stats()[1]:
-                    if stat[4]:
-                        result_num_pubs += 1
-
-                feedback_num_pubs = 0
-                for stat in self._client.feedback_sub.impl.get_stats()[1]:
-                    if stat[4]:
-                        feedback_num_pubs += 1
-
-                if status_num_pubs > 0 and result_num_pubs > 0 and feedback_num_pubs > 0:
-                    return
+        return await self._loop.run_in_executor(None, self._client.wait_for_server)
 
 
 class AsyncActionServer:
