@@ -192,7 +192,7 @@ class AsyncActionServer:
             goal_handle, goal_id = await self._goal_q.async_q.get()
 
             task = asyncio.create_task(self._coro(goal_handle))
-            task.add_done_callback(partial(self._task_done_callback, goal_id=goal_id))
+            task.add_done_callback(partial(self._task_done_callback, goal_id=goal_id, goal_handle=goal_handle))
             self._exception_monitor.register_task(task)
 
             self._tasks[goal_id] = task
@@ -205,7 +205,21 @@ class AsyncActionServer:
             except KeyError:
                 logger.error(f"Received cancellation for untracked goal_id {goal_id}")
 
-    def _task_done_callback(self, task, goal_id):
+    def _task_done_callback(self, task, goal_id, goal_handle):
+        try:
+            exc = task.exception()
+        except asyncio.CancelledError:
+            pass
+        else:
+            if exc is not None:
+                status = goal_handle.get_goal_status().status
+                if status in {GoalStatus.PENDING, GoalStatus.RECALLING}:
+                    goal_handle.set_rejected(
+                        result=None, text=f"Task rejected due to uncaught exception: {exc}")
+                elif status in {GoalStatus.ACTIVE, GoalStatus.PREEMPTING}:
+                    goal_handle.set_aborted(
+                        result=None, text=f"Task aborted due to uncaught exception: {exc}")
+
         try:
             del self._tasks[goal_id]
         except KeyError:

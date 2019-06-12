@@ -49,14 +49,12 @@ class TestActionServer(aiounittest.AsyncTestCase):
 
     async def test_goal_canceled(self):
         async def goal_coro(goal_handle):
-            with self.assertRaises(asyncio.CancelledError) as cm:
-                try:
-                    goal_handle.set_accepted()
-                    await asyncio.sleep(1009000)
-                except asyncio.CancelledError:
-                    goal_handle.set_canceled()
-                    raise
-            raise cm.exception
+            try:
+                goal_handle.set_accepted()
+                await asyncio.sleep(1009000)
+            except asyncio.CancelledError:
+                goal_handle.set_canceled()
+                raise
 
         client = SyncActionClient("test_goal_canceled", TestAction)
         server = AsyncActionServer(client.ns, TestAction, coro=goal_coro)
@@ -70,7 +68,6 @@ class TestActionServer(aiounittest.AsyncTestCase):
         goal_handle.cancel()
 
         await self.wait_for_status(goal_handle, GoalStatus.PREEMPTED)
-
         self.assertEquals(goal_handle.get_goal_status(), GoalStatus.PREEMPTED)
 
         server_task.cancel()
@@ -78,6 +75,24 @@ class TestActionServer(aiounittest.AsyncTestCase):
             await server_task
         except asyncio.CancelledError:
             pass
+
+    async def test_goal_exception(self):
+        async def goal_coro(goal_handle):
+            goal_handle.set_accepted()
+            raise RuntimeError()
+
+        client = SyncActionClient("test_goal_aborted", TestAction)
+        server = AsyncActionServer(client.ns, TestAction, coro=goal_coro)
+        server_task = asyncio.create_task(server.start())
+
+        await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
+        goal_handle = client.send_goal(TestGoal())
+
+        await self.wait_for_status(goal_handle, GoalStatus.ABORTED)
+        self.assertEquals(goal_handle.get_goal_status(), GoalStatus.ABORTED)
+
+        with self.assertRaises(RuntimeError):
+            await server_task
 
 
 if __name__ == '__main__':

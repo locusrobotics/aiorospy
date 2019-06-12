@@ -45,6 +45,7 @@ class TestSubscriber(aiounittest.AsyncTestCase):
         pub_task.cancel()
         await pub_task
 
+    @unittest.skip("Test is flaky, hard to be deterministic across three buffers.")
     async def test_subscriber_small_queue(self):
         queue_size = 1
         message_quantity = 10
