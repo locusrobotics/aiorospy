@@ -19,6 +19,7 @@ class ExceptionMonitor:
 
     def __init__(self, loop=None):
         self._loop = loop if loop is not None else asyncio.get_event_loop()
+        self._pending_tasks = set()
         self._exception_q = janus.Queue(loop=self._loop)
 
     async def start(self):
@@ -27,6 +28,16 @@ class ExceptionMonitor:
                 exc = await self._exception_q.async_q.get()
                 raise exc
         except asyncio.CancelledError as e_cancelled:
+            # Cancel any tasks that will no longer be monitored
+            while self._pending_tasks:
+                task = self._pending_tasks.pop()
+                if not task.cancelled():
+                    task.cancel()
+                try:
+                    await task
+                except Exception:  # Let the task_done_callback process task exceptions as normal
+                    pass
+
             try:
                 exc = self._exception_q.async_q.get_nowait()
                 raise exc
@@ -35,12 +46,18 @@ class ExceptionMonitor:
 
     def register_task(self, task):
         task.add_done_callback(self._task_done_callback)
+        self._pending_tasks.add(task)
 
     def register_tasks(self, tasks):
         for task in tasks:
             self.register_task(task)
 
     def _task_done_callback(self, task):
+        try:
+            self._pending_tasks.remove(task)
+        except KeyError:
+            pass
+
         try:
             exc = task.exception()
         except (concurrent.futures.CancelledError, asyncio.CancelledError):

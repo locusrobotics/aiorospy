@@ -37,14 +37,21 @@ class TestActionClient(aiounittest.AsyncTestCase):
 
         server = self.create_server("test_success_result", goal_cb)
         client = AsyncActionClient(server.ns, TestAction)
+        client_task = asyncio.create_task(client.start())
 
         await client.wait_for_server()
-        goal_handle = client.send_goal(TestGoal(1))
+        goal_handle = await client.send_goal(TestGoal(1))
         async for idx, feedback in aiostream.stream.enumerate(goal_handle.feedback()):
             self.assertEqual(feedback, TestFeedback(idx))
 
         self.assertEqual(GoalStatus.SUCCEEDED, goal_handle.status)
         self.assertEqual(expected_result, goal_handle.result)
+
+        client_task.cancel()
+        try:
+            await client_task
+        except asyncio.CancelledError:
+            pass
 
     async def test_wait_for_result(self):
         received_accepted = Event()
@@ -56,9 +63,10 @@ class TestActionClient(aiounittest.AsyncTestCase):
 
         server = self.create_server("test_wait_for_result", goal_cb)
         client = AsyncActionClient(server.ns, TestAction)
+        client_task = asyncio.create_task(client.start())
 
         await client.wait_for_server()
-        goal_handle = client.send_goal(TestGoal(1))
+        goal_handle = await client.send_goal(TestGoal(1))
         await goal_handle.reach_status(GoalStatus.ACTIVE)
 
         received_accepted.set()
@@ -71,12 +79,19 @@ class TestActionClient(aiounittest.AsyncTestCase):
         with self.assertRaises(RuntimeError):
             await goal_handle.reach_status(GoalStatus.REJECTED)
 
+        client_task.cancel()
+        try:
+            await client_task
+        except asyncio.CancelledError:
+            pass
+
     async def test_ensure(self):
         def goal_cb(goal_handle):
             goal_handle.set_accepted()
 
         server = self.create_server("test_ensure", goal_cb, auto_start=False)
         client = AsyncActionClient(server.ns, TestAction)
+        client_task = asyncio.create_task(client.start())
 
         with self.assertRaises(asyncio.TimeoutError):
             await asyncio.wait_for(client.ensure_goal(TestGoal(), resend_timeout=0.1), timeout=1)
@@ -85,6 +100,12 @@ class TestActionClient(aiounittest.AsyncTestCase):
 
         goal_handle = await client.ensure_goal(TestGoal(), resend_timeout=0.1)
         await goal_handle.reach_status(GoalStatus.ACTIVE)
+
+        client_task.cancel()
+        try:
+            await client_task
+        except asyncio.CancelledError:
+            pass
 
 
 if __name__ == '__main__':

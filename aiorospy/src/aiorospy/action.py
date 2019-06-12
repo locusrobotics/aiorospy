@@ -4,9 +4,7 @@ from functools import partial
 
 import janus
 import rospy
-from actionlib import (ActionClient, ActionServer, CommState, GoalStatus,
-                       SimpleActionClient, SimpleActionServer)
-from actionlib_msgs.msg import GoalStatusArray
+from actionlib import ActionClient, ActionServer, CommState, GoalStatus
 
 from .helpers import ExceptionMonitor
 from .topic import AsyncSubscriber
@@ -17,6 +15,7 @@ logger = logging.getLogger(__name__)
 class _AsyncGoalHandle:
 
     def __init__(self, name, loop=None):
+        """ This class should not be user-constructed """
         self.status = None
         self.result = None
 
@@ -27,9 +26,6 @@ class _AsyncGoalHandle:
 
         self._done_event = asyncio.Event(loop=loop)
         self._status_event = asyncio.Event(loop=loop)
-
-    async def start(self):
-        await self._process_transitions()
 
     async def feedback(self):
         """ Async generator providing feedback from the goal. The generator terminates when the goal
@@ -75,6 +71,9 @@ class _AsyncGoalHandle:
         """ Specifies if the goal has been cancelled. """
         return self.status in {GoalStatus.PREEMPTED, GoalStatus.PREEMPTING, GoalStatus.RECALLED, GoalStatus.RECALLING}
 
+    async def _start(self):
+        await self._process_transitions()
+
     def _transition_cb(self, goal_handle):
         self._transition_q.sync_q.put((
             goal_handle.get_goal_status(),
@@ -114,17 +113,29 @@ class AsyncActionClient:
         self.name = name
         self.action_spec = action_spec
         self._loop = loop if loop is not None else asyncio.get_event_loop()
-        self._client = ActionClient(self.name, self.action_spec)
-        self._status_sub = AsyncSubscriber(self.name + "/status", GoalStatusArray, loop=self._loop, queue_size=1)
-        self._exception_monitor = ExceptionMonitor(loop=loop)
+        self._exception_monitor = ExceptionMonitor(loop=self._loop)
+        self._started = asyncio.Event()
 
     async def start(self):
+        """ Start the action client. """
+        self._client = ActionClient(self.name, self.action_spec)
+        self._started.set()
         await self._exception_monitor.start()
 
-    def send_goal(self, goal):
+    async def wait_for_server(self):
+        """ Wait for the action server to connect to this client. """
+        await self._started.wait()
+        while True:
+            # Use a small timeout so that the execution can be cancelled if necessary
+            started = await self._loop.run_in_executor(None, self._client.wait_for_server, rospy.Duration(0.1))
+            if started:
+                return started
+
+    async def send_goal(self, goal):
         """ Send a goal to an action server. As in rospy, if you have not made sure the server is up and listening to
         the client, the goal will be swallowed.
         """
+        await self._started.wait()
         async_handle = _AsyncGoalHandle(name=self.name, loop=self._loop)
         sync_handle = self._client.send_goal(
             goal,
@@ -132,7 +143,7 @@ class AsyncActionClient:
             feedback_cb=async_handle._feedback_cb,
         )
         async_handle.cancel = sync_handle.cancel
-        task = asyncio.create_task(async_handle.start())
+        task = asyncio.create_task(async_handle._start())
         self._exception_monitor.register_task(task)
 
         return async_handle
@@ -143,7 +154,7 @@ class AsyncActionClient:
         """
         while True:
             await self.wait_for_server()
-            handle = self.send_goal(goal)
+            handle = await self.send_goal(goal)
             try:
                 await asyncio.wait_for(handle.reach_status(GoalStatus.PENDING), timeout=resend_timeout)
             except asyncio.TimeoutError:
@@ -155,25 +166,18 @@ class AsyncActionClient:
                 raise
             return handle
 
-    async def wait_for_server(self):
-        while True:
-            # Use a small timeout so that the execution can be cancelled if necessary
-            started = await self._loop.run_in_executor(None, self._client.wait_for_server, rospy.Duration(0.1))
-            if started:
-                return started
-
 
 class AsyncActionServer:
     """ Async wrapper around the action server API. """
 
-    def __init__(self, name, action_spec, coro, loop=None, ):
+    def __init__(self, name, action_spec, coro, loop=None):
         """ Initialize an action server. Incoming goals will be processed via the speficied coroutine. """
         self.name = name
         self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._coro = coro
         self._tasks = {}
 
-        self._exception_monitor = ExceptionMonitor()
+        self._exception_monitor = ExceptionMonitor(loop=self._loop)
         self._goal_q = janus.Queue(loop=loop)
         self._cancel_q = janus.Queue(loop=loop)
 
@@ -181,7 +185,7 @@ class AsyncActionServer:
             name, action_spec, goal_cb=self._goal_cb, cancel_cb=self._cancel_cb, auto_start=False)
 
     async def start(self):
-        # TODO(pbovbel) actionservers don't stop and cause the program to not terminate
+        """ Start the action server. """
         self._server.start()
         try:
             await asyncio.gather(
