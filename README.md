@@ -26,104 +26,34 @@ Simplifies dependency management and makes using a different version of python p
 
 ## Examples
 
-Check out the scripts folder for a few `rosrun`able scripts.
+Check out the `scripts` folder for examples of topics, services, actions, and a composite node.
 
-### Example Publisher and Subscriber
+Take note that when using` rospy` and `asyncio` together, the following boilerplate is recommended:
 
-```python
-#!/usr/bin/env python3.6
-import asyncio
-import rospy
-from aiorospy import AsyncSubscriber
-from std_msgs.msg import String
-
-sub = AsyncSubscriber('ping', String)
-pub = rospy.Publisher('ping', String, queue_size=1)
-
-async def send_ping():
-    while True:
-        pub.publish(f'Ping!')
-        await asyncio.sleep(1)
-
-async def receive_ping():
-    async for message in sub.subscribe():
-        print(f'Received: {message.data}')
-
-if __name__ == '__main__':
-    rospy.init_node('example_pubsub', disable_signals=True)
-    try:
-        asyncio.get_event_loop().run_until_complete(asyncio.gather(send_ping(), receive_ping())
-    finally:
-        rospy.signal_shutdown('Shutting down.')
 ```
-
-### Example Service Proxy
-
-```python
-#!/usr/bin/env python3.6
+import aiorospy
 import asyncio
 import rospy
-from aiorospy import AsyncServiceProxy
-from std_srvs.srv import SetBool, SetBoolResponse
 
-proxy = AsyncServiceProxy('ping', SetBool)
+rospy.init_node('node_name')
 
-async def call_service():
-  while True:
-            response = await proxy.send(True)
-            print(response.message)
-            await asyncio.sleep(1)
+loop = asyncio.get_event_loop()
 
-if __name__ == '__main__':
-    rospy.init_node('example_service', disable_signals=True)
-    try:
-        asyncio.get_event_loop().run_until_complete(call_service())
-    finally:
-        rospy.signal_shutdown('Shutting down.')
-```
+tasks = asyncio.gather(
+    my_top_level_task(),
+    # ...
+)
 
+# Any uncaught exceptions will cause this task to get cancelled
+aiorospy.cancel_on_exception(tasks)
+# ROS shutdown will cause this task toget cancelled
+aiorospy.cancel_on_shutdown(tasks)
 
-### Example Simple Action
-
-```python
-#!/usr/bin/env python3.6
-import asyncio
-import rospy
-from actionlib.msg import TwoIntsAction, TwoIntsGoal, TwoIntsResult
-from aiorospy import AsyncSimpleActionClient, AsyncSimpleActionServer
-
-class ExampleSimpleAction:
-
-    def __init__(self):
-        self.server = AsyncSimpleActionServer('add_two_ints', TwoIntsAction, self.execute)
-        self.server.start()
-
-        self.client = AsyncSimpleActionClient('add_two_ints', TwoIntsAction)
-
-    async def execute(self, goal):
-        await asyncio.sleep(3)
-        self.server.set_succeeded(TwoIntsResult(goal.a + goal.b))
-
-    async def send_goals(self):
-        while True:
-            result = await self.client.send_goal(TwoIntsGoal(1, 2))
-            print(f'The result is: {result}')
-            await asyncio.sleep(5)
-
-if __name__ == '__main__':
-    rospy.init_node('example_actionlib', disable_signals=True)
-    example = ExampleSimpleAction()
-    try:
-        asyncio.get_event_loop().run_until_complete(example.send_goals())
-    finally:
-        rospy.signal_shutdown('Shutting down.')
+try:
+    loop.run_until_complete(tasks)
+except asyncio.CancelledError:
+    pass
 ```
 
 ## How it works
 There's no desire to reimplement rospy this late in its life, so this package wraps the various rospy interfaces instead. This means that there are still underlying threads that handle TCP I/O for topics and services. But unlike `rospy`, the API is not callbacks that run in separate threads, but rather `awaitables` that run in the main thread's event loop.  This is accomplished by using thread-safe intermediaries such as `asyncio.call_soon_threadsafe` and `janus.Queue`.
-
-Note the use of `disable_signals=True` and `rospy.signal_shutdown()` in the examples. This is necessary to give asyncio control of shutting down the event loop and application in general. Alternatively you can manually call `loop.stop()` and do cleanup yourself.
-
-## TODO
-- Implement the non-Simple ActionClient and ActionServer
-- Explore need for `queue_size` to be handled.

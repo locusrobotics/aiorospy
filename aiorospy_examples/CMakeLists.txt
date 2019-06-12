@@ -8,12 +8,14 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package()
 
 catkin_generate_virtualenv(
-  PYTHON_VERSION 3.6
+  PYTHON_VERSION 3.7
 )
 
 set(python_scripts
+  scripts/actions
   scripts/aiorospy_telephone
-  scripts/talker_listener
+  scripts/services
+  scripts/topics
 )
 
 catkin_install_python(

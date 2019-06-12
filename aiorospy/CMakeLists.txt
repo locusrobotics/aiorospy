@@ -21,6 +21,8 @@ if(CATKIN_ENABLE_TESTING)
   set(python_test_scripts
     tests/test_action_client.py
     tests/test_action_server.py
+    tests/test_service_proxy.py
+    tests/test_service.py
     tests/test_subscriber.py
   )
 
