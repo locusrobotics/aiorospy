@@ -51,8 +51,8 @@ class _AsyncGoalHandle:
                 return
             elif self._done_event.is_set():
                 raise RuntimeError(f"Action is done, will never reach status {GoalStatus.to_string(status)}")
-
-            await self._status_event.wait()
+            else:
+                await self._status_event.wait()
 
     async def wait(self):
         """ Await until the goal terminates. """
@@ -178,8 +178,6 @@ class AsyncActionServer:
         self._tasks = {}
 
         self._exception_monitor = ExceptionMonitor(loop=self._loop)
-        self._goal_q = janus.Queue(loop=loop)
-        self._cancel_q = janus.Queue(loop=loop)
 
         self._server = ActionServer(
             name, action_spec, goal_cb=self._goal_cb, cancel_cb=self._cancel_cb, auto_start=False)
@@ -188,31 +186,22 @@ class AsyncActionServer:
         """ Start the action server. """
         self._server.start()
         try:
-            await asyncio.gather(
-                self._process_goals(),
-                self._process_cancels(),
-                self._exception_monitor.start()
-            )
+            await self._exception_monitor.start()
         finally:
             self._server.stop()
 
-    async def _process_goals(self):
-        while True:
-            goal_handle, goal_id = await self._goal_q.async_q.get()
+    def _process_goal(self, goal_handle, goal_id):
+        task = asyncio.create_task(self._coro(goal_handle))
+        task.add_done_callback(partial(self._task_done_callback, goal_id=goal_id, goal_handle=goal_handle))
+        self._exception_monitor.register_task(task)
 
-            task = asyncio.create_task(self._coro(goal_handle))
-            task.add_done_callback(partial(self._task_done_callback, goal_id=goal_id, goal_handle=goal_handle))
-            self._exception_monitor.register_task(task)
+        self._tasks[goal_id] = task
 
-            self._tasks[goal_id] = task
-
-    async def _process_cancels(self):
-        while True:
-            goal_id = await self._cancel_q.async_q.get()
-            try:
-                self._tasks[goal_id].cancel()
-            except KeyError:
-                logger.error(f"Received cancellation for untracked goal_id {goal_id}")
+    def _process_cancel(self, goal_id):
+        try:
+            self._tasks[goal_id].cancel()
+        except KeyError:
+            logger.error(f"Received cancellation for untracked goal_id {goal_id}")
 
     def _task_done_callback(self, task, goal_id, goal_handle):
         try:
@@ -236,8 +225,8 @@ class AsyncActionServer:
 
     def _goal_cb(self, goal_handle):
         goal_id = goal_handle.get_goal_id().id  # this is locking, should only be called from actionlib thread
-        self._goal_q.sync_q.put((goal_handle, goal_id))
+        self._loop.call_soon_threadsafe(self._process_goal, goal_handle, goal_id)
 
     def _cancel_cb(self, goal_handle):
         goal_id = goal_handle.get_goal_id().id  # this is locking, should only be called from actionlib thread
-        self._cancel_q.sync_q.put(goal_id)
+        self._loop.call_soon_threadsafe(self._process_cancel, goal_id)
