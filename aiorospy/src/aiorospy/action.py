@@ -14,18 +14,19 @@ logger = logging.getLogger(__name__)
 
 class _AsyncGoalHandle:
 
-    def __init__(self, name, loop=None):
+    def __init__(self, name, exception_monitor, loop=None):
         """ This class should not be user-constructed """
         self.status = None
         self.result = None
 
         self._name = name
-        self._transition_q = janus.Queue(loop=loop)
-        self._feedback_q = janus.Queue(loop=loop)
+        self._loop = loop
+        self._exception_monitor = exception_monitor
+        self._feedback_queue = janus.Queue(loop=loop)
         self._old_statuses = set()
 
-        self._done_event = asyncio.Event(loop=loop)
-        self._status_event = asyncio.Event(loop=loop)
+        self._done_event = asyncio.Event(loop=self._loop)
+        self._status_cond = asyncio.Condition(loop=self._loop)
 
     async def feedback(self):
         """ Async generator providing feedback from the goal. The generator terminates when the goal
@@ -33,14 +34,24 @@ class _AsyncGoalHandle:
         """
         while True:
             terminal_status = asyncio.create_task(self._done_event.wait())
-            new_feedback = asyncio.create_task(self._feedback_q.async_q.get())
+            new_feedback = asyncio.create_task(self._feedback_queue.async_q.get())
             done, pending = await asyncio.wait(
                 {terminal_status, new_feedback},
                 return_when=asyncio.FIRST_COMPLETED)
+
             if new_feedback in done:
+                terminal_status.cancel()
+                await terminal_status
                 yield new_feedback.result()
+
             elif terminal_status in done:
+                new_feedback.cancel()
+                try:
+                    await new_feedback
+                except asyncio.CancelledError:
+                    pass
                 return
+
             else:
                 raise RuntimeError("Unexpected termination condition")
 
@@ -52,7 +63,8 @@ class _AsyncGoalHandle:
             elif self._done_event.is_set():
                 raise RuntimeError(f"Action is done, will never reach status {GoalStatus.to_string(status)}")
             else:
-                await self._status_event.wait()
+                async with self._status_cond:
+                    await self._status_cond.wait()
 
     async def wait(self):
         """ Await until the goal terminates. """
@@ -71,25 +83,21 @@ class _AsyncGoalHandle:
         """ Specifies if the goal has been cancelled. """
         return self.status in {GoalStatus.PREEMPTED, GoalStatus.PREEMPTING, GoalStatus.RECALLED, GoalStatus.RECALLING}
 
-    async def _start(self):
-        await self._process_transitions()
-
     def _transition_cb(self, goal_handle):
-        self._transition_q.sync_q.put((
+        future = asyncio.run_coroutine_threadsafe(self._process_transition(
             goal_handle.get_goal_status(),
             goal_handle.get_comm_state(),
             goal_handle.get_result()
-        ))
+        ), loop=self._loop)
+        self._exception_monitor.register_task(future)
 
     def _feedback_cb(self, goal_handle, feedback):
-        self._feedback_q.sync_q.put(feedback)
+        self._feedback_queue.sync_q.put(feedback)
 
-    async def _process_transitions(self):
-        while not self._done_event.is_set():
-            status, comm_state, result = await self._transition_q.async_q.get()
-            logger.debug(f"Action event on {self._name}: status {GoalStatus.to_string(status)} result {result}")
-            self._status_event.set()
+    async def _process_transition(self, status, comm_state, result):
+        logger.debug(f"Action event on {self._name}: status {GoalStatus.to_string(status)} result {result}")
 
+        async with self._status_cond:
             self.status = status
             if status not in self._old_statuses:
                 self._old_statuses.add(status)
@@ -98,12 +106,11 @@ class _AsyncGoalHandle:
                 if status == GoalStatus.ACTIVE:
                     self._old_statuses.add(GoalStatus.PENDING)
 
-            if not comm_state == CommState.DONE:
-                # Re-notify awaiters when the next status comes in
-                self._status_event.clear()
-            else:
+            if comm_state == CommState.DONE:
                 self.result = result
                 self._done_event.set()
+
+            self._status_cond.notify_all()
 
 
 class AsyncActionClient:
@@ -136,15 +143,15 @@ class AsyncActionClient:
         the client, the goal will be swallowed.
         """
         await self._started.wait()
-        async_handle = _AsyncGoalHandle(name=self.name, loop=self._loop)
+        async_handle = _AsyncGoalHandle(name=self.name, exception_monitor=self._exception_monitor, loop=self._loop)
         sync_handle = self._client.send_goal(
             goal,
             transition_cb=async_handle._transition_cb,
             feedback_cb=async_handle._feedback_cb,
         )
         async_handle.cancel = sync_handle.cancel
-        task = asyncio.create_task(async_handle._start())
-        self._exception_monitor.register_task(task)
+        # task = asyncio.create_task(async_handle._start())
+        # self._exception_monitor.register_task(task)
 
         return async_handle
 

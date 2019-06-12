@@ -40,10 +40,13 @@ class TestActionClient(aiounittest.AsyncTestCase):
         client_task = asyncio.create_task(client.start())
 
         await client.wait_for_server()
+        print("a")
         goal_handle = await client.send_goal(TestGoal(1))
         async for idx, feedback in aiostream.stream.enumerate(goal_handle.feedback()):
+            print(idx)
             self.assertEqual(feedback, TestFeedback(idx))
 
+        print("b")
         self.assertEqual(GoalStatus.SUCCEEDED, goal_handle.status)
         self.assertEqual(expected_result, goal_handle.result)
 
