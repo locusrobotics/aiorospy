@@ -35,6 +35,7 @@ class AsyncServiceProxy:
                 logger.exception(f"Caught exception {e}, retrying service call")
                 continue
 
+
 class AsyncService:
 
     def __init__(self, name, service_class, coro, loop=None):
