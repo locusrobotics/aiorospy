@@ -87,18 +87,20 @@ class _AsyncGoalHandle:
         future = asyncio.run_coroutine_threadsafe(self._process_transition(
             goal_handle.get_goal_status(),
             goal_handle.get_comm_state(),
-            goal_handle.get_result()
+            goal_handle.get_result(),
+            goal_handle.get_goal_status_text(),
         ), loop=self._loop)
         self._exception_monitor.register_task(future)
 
     def _feedback_cb(self, goal_handle, feedback):
         self._feedback_queue.sync_q.put(feedback)
 
-    async def _process_transition(self, status, comm_state, result):
+    async def _process_transition(self, status, comm_state, result, text):
         logger.debug(f"Action event on {self._name}: status {GoalStatus.to_string(status)} result {result}")
 
         async with self._status_cond:
             self.status = status
+            self.text = text
             if status not in self._old_statuses:
                 self._old_statuses.add(status)
                 # (pbovbel) hack, if you accept a goal too quickly, we never see PENDING status
@@ -150,8 +152,6 @@ class AsyncActionClient:
             feedback_cb=async_handle._feedback_cb,
         )
         async_handle.cancel = sync_handle.cancel
-        # task = asyncio.create_task(async_handle._start())
-        # self._exception_monitor.register_task(task)
 
         return async_handle
 
@@ -195,7 +195,11 @@ class AsyncActionServer:
         try:
             await self._exception_monitor.start()
         finally:
-            self._server.stop()
+            try:
+                # TODO(pbovbel) depends on https://github.com/ros/actionlib/pull/142
+                self._server.stop()
+            except AttributeError:
+                pass
 
     def _process_goal(self, goal_handle, goal_id):
         task = asyncio.create_task(self._coro(goal_handle))

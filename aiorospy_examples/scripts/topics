@@ -1,0 +1,40 @@
+#!/usr/bin/env python3.7
+import asyncio
+
+import aiorospy
+import rospy
+from std_msgs.msg import String
+
+
+async def talker():
+    pub = rospy.Publisher('chatter', String, queue_size=1)
+    while True:
+        hello_str = "hello world %s" % rospy.get_time()
+        pub.publish(hello_str)
+        await asyncio.sleep(1)
+
+
+async def listener():
+    sub = aiorospy.AsyncSubscriber('chatter', String)
+    async for message in sub.subscribe():
+        print(f'I heard: {message.data}')
+
+
+if __name__ == '__main__':
+    rospy.init_node('topics')
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
+
+    tasks = asyncio.gather(
+        talker(),
+        listener()
+    )
+
+    aiorospy.cancel_on_exception(tasks)
+    aiorospy.cancel_on_shutdown(tasks)
+
+    try:
+        loop.run_until_complete(tasks)
+    except asyncio.CancelledError:
+        pass

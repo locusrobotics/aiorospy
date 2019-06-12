@@ -1,22 +1,17 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.7
 import asyncio
 import logging
 
 import aiorospy
 import rospy
 from actionlib.msg import TestAction, TestGoal, TestResult
-from aiohttp import ClientSession, web
 from std_msgs.msg import UInt64
 from std_srvs.srv import SetString, SetStringResponse
 
+from aiohttp import ClientSession, web
+
 # Quiet down warnings a bit so we can see the result more cleanly. Comment out to see what kinds of warnings we get.
 logging.getLogger('aiohttp.access').setLevel(logging.WARNING)
-
-
-def custom_exception_handler(loop, context):
-    loop.default_exception_handler(context)
-    exception = context.get('exception')
-    print(exception)
 
 
 class AiorospyTelephone:
@@ -47,8 +42,8 @@ class AiorospyTelephone:
         self.publisher = rospy.Publisher('hello_pub', UInt64, queue_size=1)
         self.subscriber = aiorospy.AsyncSubscriber('hello_pub', UInt64)
 
-        self.action_server = aiorospy.AsyncSimpleActionServer('hello_action', TestAction, self.handle_action)
-        self.action_client = aiorospy.AsyncSimpleActionClient('hello_action', TestAction)
+        self.action_server = aiorospy.AsyncActionServer('hello_action', TestAction, self.handle_action)
+        self.action_client = aiorospy.AsyncActionClient('hello_action', TestAction)
 
         self.service = aiorospy.AsyncService('hello_srv', SetString, self.handle_rosservice_call)
         self.service_proxy = aiorospy.AsyncServiceProxy('hello_srv', SetString)
@@ -61,31 +56,45 @@ class AiorospyTelephone:
 
         self.count = 0
 
-        self.loop = asyncio.get_event_loop()
-        self.loop.set_exception_handler(custom_exception_handler)
+    async def start(self):
+        runner = web.AppRunner(self.http_server)
+        await runner.setup()
+
+        site = web.TCPSite(runner)
+
+        await asyncio.gather(
+            self.action_client.start(),
+            self.action_server.start(),
+            self.service.start(),
+            site.start(),
+            self.send_goal()
+        )
 
     async def send_goal(self):
         while True:
             print('Step 1: Create and dispatch an actionlib goal and await its completion.')
-            state, result = await self.action_client.send_goal(TestGoal(self.count))
+            goal_handle = await self.action_client.ensure_goal(TestGoal(self.count), resend_timeout=5.0)
+            await goal_handle.wait()
 
             print('Step 10: print the actionlib goal result. Wow. That all sure was unnecessary.')
-            print(f'The count is: {result.result}')
+            print(f'The count is: {goal_handle.result.result}')
 
             await asyncio.sleep(2)
             self.count += 1
 
-    async def handle_action(self, goal):
+    async def handle_action(self, goal_handle):
+        goal_handle.set_accepted()
+
         print('Step 2: Handle the actionlib goal by making a ROS service call and await its completion.')
-        response = await self.service_proxy.send(str(goal.goal))
+        response = await self.service_proxy.ensure(str(goal_handle.goal.goal.goal))
 
         print('Step 9: Set the actionlib goal as succeeded, passing the service call response content as a result.')
-        self.action_server.set_succeeded(TestResult(int(response.message)))
+        goal_handle.set_succeeded(TestResult(int(response.message)))
 
-    async def handle_rosservice_call(self, msg):
+    async def handle_rosservice_call(self, req):
         async with ClientSession() as session:
             print('Step 3: Handle the ROS service call by making an HTTP request.')
-            async with session.get(f'http://localhost:8080/hello?count={msg.data}') as response:
+            async with session.get(f'http://localhost:8080/hello?count={req.data}') as response:
 
                 print('Step 8: Await the HTTP response then respond to the ROS service call with the contents.')
                 count = await response.text()
@@ -100,7 +109,8 @@ class AiorospyTelephone:
                 await ws.send_str(str(value))
 
                 print('Step 6: Wait for a ROS message to be published on the ROS topic.')
-                msg = await self.subscriber.get()
+                async for msg in self.subscriber.subscribe():
+                    break
                 await session.close()
 
                 print('Step 7: respond to the HTTP request with the contents of the ROS message.')
@@ -111,29 +121,27 @@ class AiorospyTelephone:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         async for msg in ws:
+            while self.publisher.get_num_connections() <= 0:
+                await asyncio.sleep(0.1)
             self.publisher.publish(int(msg.data))
 
         return ws
 
-    def start(self):
-        # Prepare HTTP server.
-        runner = web.AppRunner(self.http_server)
-        self.loop.run_until_complete(runner.setup())
-        site = web.TCPSite(runner)
-        self.loop.run_until_complete(site.start())
-
-        # Run infinite loops until shutdown.
-        self.loop.run_until_complete(asyncio.gather(
-            self.send_goal()
-        ))
-
 
 if __name__ == '__main__':
-    rospy.init_node('aiorospy_telephone', disable_signals=True, log_level=rospy.ERROR)
+    rospy.init_node('aiorospy_telephone', log_level=rospy.ERROR)
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
+
     telephone = AiorospyTelephone()
+
+    task = loop.create_task(telephone.start())
+
+    aiorospy.cancel_on_exception(task)
+    aiorospy.cancel_on_shutdown(task)
+
     try:
-        telephone.start()
-    except KeyboardInterrupt:
+        loop.run_until_complete(task)
+    except asyncio.CancelledError:
         pass
-    finally:
-        rospy.signal_shutdown('Shutting down.')

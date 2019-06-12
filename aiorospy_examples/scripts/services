@@ -1,0 +1,42 @@
+#!/usr/bin/env python3.7
+import asyncio
+import random
+
+import aiorospy
+import rospy
+from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
+
+
+async def handle_service(req):
+    return SetBoolResponse(success=not req.data)
+
+
+async def request_loop(client):
+    while True:
+        data = bool(random.getrandbits(1))
+        res = await client.ensure(SetBoolRequest(data=data))
+        print(f'I sent {data}, I got {res.success}')
+        await asyncio.sleep(1)
+
+
+if __name__ == '__main__':
+    rospy.init_node('services')
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
+
+    server = aiorospy.AsyncService('service', SetBool, handle_service)
+    client = aiorospy.AsyncServiceProxy(server.name, SetBool)
+
+    tasks = asyncio.gather(
+        server.start(),
+        request_loop(client)
+    )
+
+    aiorospy.cancel_on_exception(tasks)
+    aiorospy.cancel_on_shutdown(tasks)
+
+    try:
+        loop.run_until_complete(tasks)
+    except asyncio.CancelledError:
+        pass
