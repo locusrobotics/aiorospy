@@ -178,11 +178,14 @@ class AsyncActionServer:
     async def start(self):
         # TODO(pbovbel) actionservers don't stop and cause the program to not terminate
         self._server.start()
-        await asyncio.gather(
-            self._process_goals(),
-            self._process_cancels(),
-            self._exception_monitor.start()
-        )
+        try:
+            await asyncio.gather(
+                self._process_goals(),
+                self._process_cancels(),
+                self._exception_monitor.start()
+            )
+        finally:
+            self._server.stop()
 
     async def _process_goals(self):
         while True:
