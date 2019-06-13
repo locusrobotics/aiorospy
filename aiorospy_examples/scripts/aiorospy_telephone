@@ -62,7 +62,7 @@ class AiorospyTelephone:
 
         site = web.TCPSite(runner)
 
-        await asyncio.gather(
+        return await asyncio.gather(
             self.action_client.start(),
             self.action_server.start(),
             self.service.start(),

@@ -67,7 +67,6 @@ class AsyncService:
 
     def _handler(self, msg):
         future = asyncio.run_coroutine_threadsafe(self._coro(msg), loop=self._loop)
-
         self._exception_monitor.register_task(future)
 
         # Blocks until the future has a result.

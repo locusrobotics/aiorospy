@@ -15,6 +15,7 @@ set(python_scripts
   scripts/actions
   scripts/aiorospy_telephone
   scripts/services
+  scripts/simple_actions
   scripts/topics
 )
 
