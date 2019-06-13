@@ -7,14 +7,26 @@ import rospy
 from actionlib.msg import TestAction, TestGoal, TestResult
 
 
-class ActionDemo:
+class SimpleActionDemo:
 
     def __init__(self):
-        self.server = aiorospy.AsyncActionServer('async_action', TestAction, self.handle_action)
-        self.client = aiorospy.AsyncActionClient('async_action', TestAction)
+        self.server = aiorospy.AsyncActionServer('async_simple_action', TestAction, self.handle_action)
+        self.client = aiorospy.AsyncActionClient('async_simple_action', TestAction)
+        self.current_goal_handle = None
 
     async def handle_action(self, goal_handle):
         goal_id = goal_handle.get_goal_id().id.split('-')[1]
+        old_goal_handle = self.current_goal_handle
+        self.current_goal_handle = goal_handle
+        try:
+            if old_goal_handle:
+                await asyncio.shield(self.server.cancel(old_goal_handle))
+
+        except asyncio.CancelledError:
+            print(f"Server: Interrupted before starting task {goal_id}")
+            goal_handle.set_rejected()
+            raise
+
         try:
             delay = goal_handle.get_goal().goal / 1000
             print(f"Server: Doing task {goal_id} for {delay}s")
@@ -36,19 +48,17 @@ class ActionDemo:
             try:
                 await asyncio.wait_for(goal_handle.wait(), timeout=0.5)
             except asyncio.TimeoutError:
-                print("Client: Cancelling after 0.5s...")
-                goal_handle.cancel()
-                await goal_handle.wait()
+                print("Client: Giving up after 0.5s...")
             print("---")
 
 
 if __name__ == '__main__':
-    rospy.init_node('actions')
+    rospy.init_node('simple_actions')
 
     loop = asyncio.get_event_loop()
     loop.set_debug(True)
 
-    demo = ActionDemo()
+    demo = SimpleActionDemo()
 
     tasks = asyncio.gather(
         demo.server.start(),

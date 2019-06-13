@@ -46,7 +46,10 @@ class ExceptionMonitor:
                 task = self._pending_tasks.pop()
                 if not task.cancelled():
                     task.cancel()
-                await task
+
+                # We can't await a concurrent.future task, make sure it comes from asyncio
+                if asyncio.isfuture(task):
+                    await task
             raise
 
         finally:
@@ -58,7 +61,7 @@ class ExceptionMonitor:
 
     def register_task(self, task):
         """ Register a task with the exception monitor. If the exception monitor is shutdown, all registered
-        tasks will be cancelled.
+        tasks will be cancelled. Supports asyncio and concurrent.futures tasks.
         """
         task.add_done_callback(self._task_done_callback)
         self._pending_tasks.add(task)

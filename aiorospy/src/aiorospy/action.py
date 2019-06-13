@@ -201,18 +201,29 @@ class AsyncActionServer:
             except AttributeError:
                 pass
 
+    async def cancel(self, goal_handle):
+        goal_id = goal_handle.get_goal_id().id
+        task = self._process_cancel(goal_id)
+        if task:
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
     def _process_goal(self, goal_handle, goal_id):
         task = asyncio.create_task(self._coro(goal_handle))
         task.add_done_callback(partial(self._task_done_callback, goal_id=goal_id, goal_handle=goal_handle))
         self._exception_monitor.register_task(task)
-
         self._tasks[goal_id] = task
 
     def _process_cancel(self, goal_id):
         try:
-            self._tasks[goal_id].cancel()
+            task = self._tasks[goal_id]
+            task.cancel()
+            return task
         except KeyError:
-            logger.error(f"Received cancellation for untracked goal_id {goal_id}")
+            logger.debug(f"Received cancellation for untracked goal_id {goal_id}")
+            return None
 
     def _task_done_callback(self, task, goal_id, goal_handle):
         try:
