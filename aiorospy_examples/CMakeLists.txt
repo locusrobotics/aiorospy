@@ -11,6 +11,9 @@ catkin_generate_virtualenv(
   PYTHON_VERSION 3.7
 )
 
+install(FILES requirements.txt
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+
 set(python_scripts
   scripts/actions
   scripts/aiorospy_telephone
