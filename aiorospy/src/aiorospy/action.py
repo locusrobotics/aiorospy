@@ -187,7 +187,11 @@ class AsyncActionServer:
         self._exception_monitor = ExceptionMonitor(loop=self._loop)
 
         self._server = ActionServer(
-            name, action_spec, goal_cb=self._goal_cb, cancel_cb=self._cancel_cb, auto_start=False)
+            name, action_spec, auto_start=False,
+            # Make sure to run callbacks on the main thread
+            goal_cb=partial(self._loop.call_soon_threadsafe, self._goal_cb),
+            cancel_cb=partial(self._loop.call_soon_threadsafe, self._cancel_cb),
+        )
 
     async def start(self):
         """ Start the action server. """
@@ -202,21 +206,23 @@ class AsyncActionServer:
                 pass
 
     async def cancel(self, goal_handle):
-        goal_id = goal_handle.get_goal_id().id
-        task = self._process_cancel(goal_id)
+        """ Cancel a particular goal's handler task. """
+        task = self._cancel_cb(goal_handle)
         if task:
             try:
                 await task
             except asyncio.CancelledError:
                 pass
 
-    def _process_goal(self, goal_handle, goal_id):
+    def _goal_cb(self, goal_handle):
+        goal_id = goal_handle.get_goal_id().id
         task = asyncio.create_task(self._coro(goal_handle))
-        task.add_done_callback(partial(self._task_done_callback, goal_id=goal_id, goal_handle=goal_handle))
+        task.add_done_callback(partial(self._task_done_callback, goal_handle=goal_handle))
         self._exception_monitor.register_task(task)
         self._tasks[goal_id] = task
 
-    def _process_cancel(self, goal_id):
+    def _cancel_cb(self, goal_handle):
+        goal_id = goal_handle.get_goal_id().id
         try:
             task = self._tasks[goal_id]
             task.cancel()
@@ -225,30 +231,41 @@ class AsyncActionServer:
             logger.debug(f"Received cancellation for untracked goal_id {goal_id}")
             return None
 
-    def _task_done_callback(self, task, goal_id, goal_handle):
+    PENDING_STATUS = {GoalStatus.PENDING, GoalStatus.RECALLING}
+    ACTIVE_STATUS = {GoalStatus.ACTIVE, GoalStatus.PREEMPTING}
+    NON_TERMINAL_STATUS = PENDING_STATUS | ACTIVE_STATUS
+
+    def _task_done_callback(self, task, goal_handle):
+        goal_id = goal_handle.get_goal_id().id
+        status = goal_handle.get_goal_status().status
         try:
             exc = task.exception()
         except asyncio.CancelledError:
-            pass
+            if status in self.NON_TERMINAL_STATUS:
+                message = f"Task handler was cancelled, goal {goal_id} cancelled automatically"
+                goal_handle.set_canceled(text=message)
+                logger.warning(f"{message}. Please call set_canceled in the action handler.")
         else:
+            rejected_message = f"Goal {goal_id} rejected"
+            aborted_message = f"Goal {goal_id} aborted"
+
             if exc is not None:
-                status = goal_handle.get_goal_status().status
-                if status in {GoalStatus.PENDING, GoalStatus.RECALLING}:
-                    goal_handle.set_rejected(
-                        result=None, text=f"Task rejected due to uncaught exception: {exc}")
-                elif status in {GoalStatus.ACTIVE, GoalStatus.PREEMPTING}:
-                    goal_handle.set_aborted(
-                        result=None, text=f"Task aborted due to uncaught exception: {exc}")
+                reason = f"uncaught exception in actionserver handler: {exc}"
+                if status in self.PENDING_STATUS:
+                    goal_handle.set_rejected(result=None, text=f"{rejected_message}, {reason}")
+                elif status in self.ACTIVE_STATUS:
+                    goal_handle.set_aborted(result=None, text=f"{aborted_message}, {reason}")
+
+            else:
+                reason = f"never completed server-side"
+                if status in self.PENDING_STATUS:
+                    goal_handle.set_rejected(result=None, text=f"{rejected_message}, {reason}")
+                    logger.warning(f"{rejected_message}, {reason}")
+                elif status in self.ACTIVE_STATUS:
+                    goal_handle.set_aborted(result=None, text=f"{aborted_message}, {reason}")
+                    logger.warning(f"{aborted_message}, {reason}")
 
         try:
             del self._tasks[goal_id]
         except KeyError:
             pass
-
-    def _goal_cb(self, goal_handle):
-        goal_id = goal_handle.get_goal_id().id  # this is locking, should only be called from actionlib thread
-        self._loop.call_soon_threadsafe(self._process_goal, goal_handle, goal_id)
-
-    def _cancel_cb(self, goal_handle):
-        goal_id = goal_handle.get_goal_id().id  # this is locking, should only be called from actionlib thread
-        self._loop.call_soon_threadsafe(self._process_cancel, goal_id)
