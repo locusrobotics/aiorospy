@@ -69,7 +69,7 @@ class _AsyncGoalHandle:
 
     async def wait(self, log_period=None):
         """ Await until the goal terminates. """
-        return await_and_log(
+        return await await_and_log(
             self._done_event.wait(),
             f"Waiting for goal to action {self._name} to complete",
             log_period
@@ -137,7 +137,7 @@ class AsyncActionClient:
         await self._exception_monitor.start()
 
     async def _started(self):
-        await_and_log(
+        await await_and_log(
             self._started_event.wait(),
             f"Waiting for {self.name} client to start()",
             5.0
@@ -172,7 +172,7 @@ class AsyncActionClient:
         resend the goal.
         """
         while True:
-            await_and_log(
+            await await_and_log(
                 self.wait_for_server(),
                 f"Waiting for action server {self.name}",
                 5.0
