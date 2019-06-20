@@ -79,3 +79,21 @@ class ExceptionMonitor:
         else:
             if exc is not None:
                 self._exception_q.sync_q.put(exc)
+
+
+async def log_during(awaitable, msg, period, sink=logger.info):
+    if period is not None:
+        task = asyncio.create_task(awaitable)
+        while True:
+            try:
+                return await asyncio.wait_for(
+                    asyncio.shield(task),
+                    timeout=period)
+            except asyncio.TimeoutError:
+                sink(msg)
+            except asyncio.CancelledError:
+                task.cancel()
+                await task
+                raise
+    else:
+        return await awaitable
