@@ -83,9 +83,10 @@ class ExceptionMonitor:
 
 async def log_during(awaitable, msg, period, sink=logger.info):
     if period:
-        try:
-            return await asyncio.wait_for(awaitable, timeout=period)
-        except asyncio.TimeoutError:
-            sink(msg)
+        while True:
+            try:
+                return await asyncio.wait_for(awaitable, timeout=period)
+            except asyncio.TimeoutError:
+                sink(msg)
     else:
         return await awaitable
