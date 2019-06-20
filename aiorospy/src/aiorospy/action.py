@@ -6,7 +6,7 @@ import janus
 import rospy
 from actionlib import ActionClient, ActionServer, CommState, GoalStatus
 
-from .helpers import ExceptionMonitor, await_and_log
+from .helpers import ExceptionMonitor, log_during
 from .topic import AsyncSubscriber
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ class _AsyncGoalHandle:
 
     async def wait(self, log_period=None):
         """ Await until the goal terminates. """
-        return await await_and_log(
+        return await log_during(
             self._done_event.wait(),
             f"Waiting for goal to action {self._name} to complete",
             log_period
@@ -137,7 +137,7 @@ class AsyncActionClient:
         await self._exception_monitor.start()
 
     async def _started(self):
-        await await_and_log(
+        await log_during(
             self._started_event.wait(),
             f"Waiting for {self.name} client to start()",
             5.0
@@ -172,7 +172,7 @@ class AsyncActionClient:
         resend the goal.
         """
         while True:
-            await await_and_log(
+            await log_during(
                 self.wait_for_server(),
                 f"Waiting for action server {self.name}",
                 5.0
