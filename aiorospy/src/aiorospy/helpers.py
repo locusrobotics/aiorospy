@@ -81,11 +81,11 @@ class ExceptionMonitor:
                 self._exception_q.sync_q.put(exc)
 
 
-async def log_during(awaitable, msg, period):
+async def log_during(awaitable, msg, period, sink=logger.info):
     if period:
         try:
             return await asyncio.wait_for(awaitable, timeout=period)
         except asyncio.TimeoutError:
-            logger.info(msg)
+            sink(msg)
     else:
         return await awaitable
