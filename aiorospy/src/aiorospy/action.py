@@ -6,7 +6,7 @@ import janus
 import rospy
 from actionlib import ActionClient, ActionServer, CommState, GoalStatus
 
-from .helpers import ExceptionMonitor
+from .helpers import ExceptionMonitor, await_and_log
 from .topic import AsyncSubscriber
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class _AsyncGoalHandle:
         self._done_event = asyncio.Event(loop=self._loop)
         self._status_cond = asyncio.Condition(loop=self._loop)
 
-    async def feedback(self):
+    async def feedback(self, log_period=None):
         """ Async generator providing feedback from the goal. The generator terminates when the goal
         is done.
         """
@@ -37,7 +37,8 @@ class _AsyncGoalHandle:
             new_feedback = asyncio.create_task(self._feedback_queue.async_q.get())
             done, pending = await asyncio.wait(
                 {terminal_status, new_feedback},
-                return_when=asyncio.FIRST_COMPLETED)
+                return_when=asyncio.FIRST_COMPLETED,
+                timeout=log_period)
 
             if new_feedback in done:
                 terminal_status.cancel()
@@ -53,7 +54,7 @@ class _AsyncGoalHandle:
                 return
 
             else:
-                raise RuntimeError("Unexpected termination condition")
+                logger.info(f"Waiting for feedback on action {self._name}")
 
     async def reach_status(self, status):
         """ Await until the goal reaches a particular status. """

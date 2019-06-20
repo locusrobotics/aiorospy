@@ -79,3 +79,13 @@ class ExceptionMonitor:
         else:
             if exc is not None:
                 self._exception_q.sync_q.put(exc)
+
+
+async def await_and_log(awaitable, msg, period):
+    if period:
+        try:
+            return await asyncio.wait_for(awaitable, timeout=period)
+        except asyncio.TimeoutError:
+            logger.info(msg)
+    else:
+        return await awaitable

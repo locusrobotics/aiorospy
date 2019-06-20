@@ -5,7 +5,7 @@ import sys
 
 import rospy
 
-from .helpers import ExceptionMonitor
+from .helpers import ExceptionMonitor, await_and_log
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +29,18 @@ class AsyncServiceProxy:
 
     async def send(self, *args, **kwargs):
         """ Send a request to a ROS service. """
-        return await self._loop.run_in_executor(None, self._srv_proxy.call, *args, **kwargs)
+        log_period = kwargs.pop('log_period', None)
+        return await await_and_log(
+            self._loop.run_in_executor(None, self._srv_proxy.call, *args, **kwargs),
+            f"Trying to call service {self.name}...",
+            log_period
+        )
 
     async def ensure(self, *args, **kwargs):
         """ Send a request to a ROS service, retrying if comms failure is detected. """
+        log_period = kwargs.pop('log_period', None)
         while True:
-            await self.wait_for_service()
+            await_and_log(self.wait_for_service(), f"Waiting for service {self.name}...", log_period)
             try:
                 return await self.send(*args, **kwargs)
             except (rospy.ServiceException, AttributeError, rospy.exceptions.ROSException,
