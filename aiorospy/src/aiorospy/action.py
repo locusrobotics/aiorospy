@@ -54,9 +54,9 @@ class _AsyncGoalHandle:
                 return
 
             else:
-                logger.info(f"Waiting for feedback on action {self._name}")
+                logger.info(f"Waiting for feedback on goal {self.goal_id}")
 
-    async def reach_status(self, status):
+    async def reach_status(self, status, log_period=None):
         """ Await until the goal reaches a particular status. """
         while True:
             if status in self._old_statuses:
@@ -65,13 +65,17 @@ class _AsyncGoalHandle:
                 raise RuntimeError(f"Action is done, will never reach status {GoalStatus.to_string(status)}")
             else:
                 async with self._status_cond:
-                    await self._status_cond.wait()
+                    await log_during(
+                        self._status_cond.wait(),
+                        f"Waiting for goal {self.goal_id} to reach {GoalStatus.to_string(status)}",
+                        log_period
+                    )
 
     async def wait(self, log_period=None):
         """ Await until the goal terminates. """
         return await log_during(
             self._done_event.wait(),
-            f"Waiting for goal to action {self._name} to complete",
+            f"Waiting for goal {self.goal_id} to complete",
             log_period
         )
 
@@ -101,7 +105,7 @@ class _AsyncGoalHandle:
         self._feedback_queue.sync_q.put(feedback)
 
     async def _process_transition(self, status, comm_state, result, text):
-        logger.debug(f"Action event on {self._name}: status {GoalStatus.to_string(status)} result {result}")
+        logger.debug(f"Event in goal {self.goal_id}: status {GoalStatus.to_string(status)} result {result}")
 
         async with self._status_cond:
             self.status = status
@@ -163,6 +167,7 @@ class AsyncActionClient:
             transition_cb=async_handle._transition_cb,
             feedback_cb=async_handle._feedback_cb,
         )
+        async_handle.goal_id = sync_handle.comm_state_machine.action_goal.goal_id.id
         async_handle.cancel = sync_handle.cancel
 
         return async_handle

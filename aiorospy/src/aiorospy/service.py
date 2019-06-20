@@ -18,8 +18,11 @@ class AsyncServiceProxy:
         self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._srv_proxy = rospy.ServiceProxy(name, service_class)
 
-    async def wait_for_service(self):
+    async def wait_for_service(self, log_period):
         """ Wait for a ROS service to be available. """
+        await log_during(self._wait_for_service(), f"Waiting for service {self.name}...", log_period)
+
+    async def _wait_for_service(self):
         while True:
             try:
                 # Use a small timeout so the execution can be cancelled if necessary
@@ -40,12 +43,12 @@ class AsyncServiceProxy:
         """ Send a request to a ROS service, retrying if comms failure is detected. """
         log_period = kwargs.pop('log_period', None)
         while True:
-            await log_during(self.wait_for_service(), f"Waiting for service {self.name}...", log_period)
+            await self.wait_for_service(log_period)
             try:
                 return await self.send(*args, **kwargs)
             except (rospy.ServiceException, AttributeError, rospy.exceptions.ROSException,
                     rospy.exceptions.ROSInternalException) as e:
-                logger.exception(f"Caught exception {e}, retrying service call")
+                logger.exception(f"Caught exception {e}, retrying service call...")
                 continue
 
 
