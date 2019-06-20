@@ -54,7 +54,7 @@ class _AsyncGoalHandle:
                 return
 
             else:
-                logger.info(f"Waiting for feedback on goal {self.goal_id}")
+                logger.info(f"Waiting for feedback on {self.goal_id} from {self._name}")
 
     async def reach_status(self, status, log_period=None):
         """ Await until the goal reaches a particular status. """
@@ -67,14 +67,14 @@ class _AsyncGoalHandle:
                 async with self._status_cond:
                     await log_during(
                         self._status_cond.wait(),
-                        f"Waiting for goal {self.goal_id} to reach {GoalStatus.to_string(status)}",
+                        f"Waiting for {self.goal_id} on {self._name} to reach {GoalStatus.to_string(status)}",
                         log_period)
 
     async def wait(self, log_period=None):
         """ Await until the goal terminates. """
         return await log_during(
             self._done_event.wait(),
-            f"Waiting for goal {self.goal_id} to complete",
+            f"Waiting for {self.goal_id} on {self._name} to complete",
             log_period
         )
 
@@ -140,12 +140,12 @@ class AsyncActionClient:
         await self._exception_monitor.start()
 
     async def _started(self):
-        await log_during(self._started_event.wait(), f"Waiting for {self.name} client to start()", 5.0)
+        await log_during(self._started_event.wait(), f"Waiting for {self.name} client to be started...", 5.0)
 
     async def wait_for_server(self, log_period=None):
         """ Wait for the action server to connect to this client. """
         await self._started()
-        await log_during(self._wait_for_server(), f"Waiting for action server {self.name}", log_period)
+        await log_during(self._wait_for_server(), f"Waiting for {self.name} server...", log_period)
 
     async def _wait_for_server(self):
         while True:
