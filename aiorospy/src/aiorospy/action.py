@@ -105,7 +105,7 @@ class _AsyncGoalHandle:
                 self._old_statuses.add(status)
                 # (pbovbel) hack, if you accept a goal too quickly, we never see PENDING status
                 # this is probably an issue elsewhere, and a DAG of action states would be great to have.
-                if status == GoalStatus.ACTIVE:
+                if status != GoalStatus.PENDING and GoalStatus.PENDING not in self._old_statuses:
                     self._old_statuses.add(GoalStatus.PENDING)
 
             if comm_state == CommState.DONE:
