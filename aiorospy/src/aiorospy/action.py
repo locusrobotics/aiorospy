@@ -67,9 +67,13 @@ class _AsyncGoalHandle:
                 async with self._status_cond:
                     await self._status_cond.wait()
 
-    async def wait(self):
+    async def wait(self, log_period=None):
         """ Await until the goal terminates. """
-        return await self._done_event.wait()
+        return await_and_log(
+            self._done_event.wait(),
+            f"Waiting for goal to action {self._name} to complete",
+            log_period
+        )
 
     def done(self):
         """ Specifies if the goal is terminated. """
@@ -124,17 +128,24 @@ class AsyncActionClient:
         self.action_spec = action_spec
         self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._exception_monitor = ExceptionMonitor(loop=self._loop)
-        self._started = asyncio.Event()
+        self._started_event = asyncio.Event()
 
     async def start(self):
         """ Start the action client. """
         self._client = ActionClient(self.name, self.action_spec)
-        self._started.set()
+        self._started_event.set()
         await self._exception_monitor.start()
+
+    async def _started(self):
+        await_and_log(
+            self._started_event.wait(),
+            f"Waiting for {self.name} client to start()",
+            5.0
+        )
 
     async def wait_for_server(self):
         """ Wait for the action server to connect to this client. """
-        await self._started.wait()
+        await self._started()
         while True:
             # Use a small timeout so that the execution can be cancelled if necessary
             connected = await self._loop.run_in_executor(None, self._client.wait_for_server, rospy.Duration(0.1))
@@ -145,7 +156,7 @@ class AsyncActionClient:
         """ Send a goal to an action server. As in rospy, if you have not made sure the server is up and listening to
         the client, the goal will be swallowed.
         """
-        await self._started.wait()
+        await self._started()
         async_handle = _AsyncGoalHandle(name=self.name, exception_monitor=self._exception_monitor, loop=self._loop)
         sync_handle = self._client.send_goal(
             goal,
@@ -161,7 +172,12 @@ class AsyncActionClient:
         resend the goal.
         """
         while True:
-            await self.wait_for_server()
+            await_and_log(
+                self.wait_for_server(),
+                f"Waiting for action server {self.name}",
+                5.0
+            )
+
             handle = await self.send_goal(goal)
             try:
                 await asyncio.wait_for(handle.reach_status(GoalStatus.PENDING), timeout=resend_timeout)
