@@ -33,11 +33,8 @@ class AsyncServiceProxy:
     async def send(self, *args, **kwargs):
         """ Send a request to a ROS service. """
         log_period = kwargs.pop('log_period', None)
-        return await log_during(
-            self._loop.run_in_executor(None, self._srv_proxy.call, *args, **kwargs),
-            f"Trying to call service {self.name}...",
-            log_period
-        )
+        return await log_during(self._loop.run_in_executor(None, self._srv_proxy.call, *args, **kwargs),
+                                f"Trying to call service {self.name}...", log_period)
 
     async def ensure(self, *args, **kwargs):
         """ Send a request to a ROS service, retrying if comms failure is detected. """
