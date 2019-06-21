@@ -13,7 +13,7 @@ async def handle_service(req):
 
 async def request_loop(client):
     while True:
-        data = bool(random.getrandbits(1))
+        data = random.choice((True, False))
         res = await client.ensure(SetBoolRequest(data=data))
         print(f'I sent {data}, I got {res.success}')
         await asyncio.sleep(1)
