@@ -200,6 +200,7 @@ class AsyncActionServer:
     def __init__(self, name, action_spec, coro, loop=None):
         """ Initialize an action server. Incoming goals will be processed via the speficied coroutine. """
         self.name = name
+        self.action_spec = action_spec
         self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._coro = coro
         self._tasks = {}
@@ -209,7 +210,7 @@ class AsyncActionServer:
     async def start(self):
         """ Start the action server. """
         self._server = ActionServer(
-            name, action_spec, auto_start=False,
+            self.name, self.action_spec, auto_start=False,
             # Make sure to run callbacks on the main thread
             goal_cb=partial(self._loop.call_soon_threadsafe, self._goal_cb),
             cancel_cb=partial(self._loop.call_soon_threadsafe, self._cancel_cb),
