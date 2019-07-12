@@ -5,8 +5,9 @@ import logging
 import aiorospy
 import rospy
 from actionlib.msg import TestAction, TestGoal, TestResult
+from rospy_tutorials.srv import (AddTwoInts, AddTwoIntsRequest,
+                                 AddTwoIntsResponse)
 from std_msgs.msg import UInt64
-from std_srvs.srv import SetString, SetStringResponse
 
 from aiohttp import ClientSession, web
 
@@ -45,8 +46,8 @@ class AiorospyTelephone:
         self.action_server = aiorospy.AsyncActionServer('hello_action', TestAction, self.handle_action)
         self.action_client = aiorospy.AsyncActionClient('hello_action', TestAction)
 
-        self.service = aiorospy.AsyncService('hello_srv', SetString, self.handle_rosservice_call)
-        self.service_proxy = aiorospy.AsyncServiceProxy('hello_srv', SetString)
+        self.service = aiorospy.AsyncService('hello_srv', AddTwoInts, self.handle_rosservice_call)
+        self.service_proxy = aiorospy.AsyncServiceProxy('hello_srv', AddTwoInts)
 
         self.http_server = web.Application()
         self.http_server.add_routes([
@@ -86,20 +87,21 @@ class AiorospyTelephone:
         goal_handle.set_accepted()
 
         print('Step 2: Handle the actionlib goal by making a ROS service call and await its completion.')
-        response = await self.service_proxy.ensure(str(goal_handle.goal.goal.goal))
+        req = AddTwoIntsRequest(a=int(goal_handle.goal.goal.goal))
+        res = await self.service_proxy.ensure(req)
 
         print('Step 9: Set the actionlib goal as succeeded, passing the service call response content as a result.')
-        goal_handle.set_succeeded(TestResult(int(response.message)))
+        goal_handle.set_succeeded(TestResult(res.sum))
 
     async def handle_rosservice_call(self, req):
         async with ClientSession() as session:
             print('Step 3: Handle the ROS service call by making an HTTP request.')
-            async with session.get(f'http://localhost:8080/hello?count={req.data}') as response:
+            async with session.get(f'http://localhost:8080/hello?count={req.a}') as response:
 
                 print('Step 8: Await the HTTP response then respond to the ROS service call with the contents.')
                 count = await response.text()
                 await session.close()
-                return SetStringResponse(True, count)
+                return AddTwoIntsResponse(int(count))
 
     async def handle_http_request(self, request):
         print('Step 4: Handle the HTTP request by establishing a WebSocket connection and sending a message.')

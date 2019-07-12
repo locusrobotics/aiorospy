@@ -136,8 +136,13 @@ class AsyncActionClient:
     async def start(self):
         """ Start the action client. """
         self._client = ActionClient(self.name, self.action_spec)
-        self._started_event.set()
-        await self._exception_monitor.start()
+        try:
+            self._started_event.set()
+            await self._exception_monitor.start()
+        finally:
+            # TODO(pbovbel) depends on https://github.com/ros/actionlib/pull/142
+            self._client.stop()
+            self._client = None
 
     async def _started(self):
         await log_during(self._started_event.wait(), f"Waiting for {self.name} client to be started...", 5.0)
@@ -195,30 +200,28 @@ class AsyncActionServer:
     def __init__(self, name, action_spec, coro, loop=None):
         """ Initialize an action server. Incoming goals will be processed via the speficied coroutine. """
         self.name = name
+        self.action_spec = action_spec
         self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._coro = coro
         self._tasks = {}
 
         self._exception_monitor = ExceptionMonitor(loop=self._loop)
 
+    async def start(self):
+        """ Start the action server. """
         self._server = ActionServer(
-            name, action_spec, auto_start=False,
+            self.name, self.action_spec, auto_start=False,
             # Make sure to run callbacks on the main thread
             goal_cb=partial(self._loop.call_soon_threadsafe, self._goal_cb),
             cancel_cb=partial(self._loop.call_soon_threadsafe, self._cancel_cb),
         )
-
-    async def start(self):
-        """ Start the action server. """
-        self._server.start()
         try:
+            self._server.start()
             await self._exception_monitor.start()
         finally:
-            try:
-                # TODO(pbovbel) depends on https://github.com/ros/actionlib/pull/142
-                self._server.stop()
-            except AttributeError:
-                pass
+            # TODO(pbovbel) depends on https://github.com/ros/actionlib/pull/142
+            self._server.stop()
+            self._server = None
 
     async def cancel(self, goal_handle):
         """ Cancel a particular goal's handler task. """
