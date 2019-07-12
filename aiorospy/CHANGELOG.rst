@@ -2,8 +2,8 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.0 (2019-07-12)
+------------------
 * Cleanup (`#18 <https://github.com/locusrobotics/aiorospy/issues/18>`_)
   * Also stop action client to prevent memory leaks
   * Fix virtualenv for examples; drop requirement on std_srv fork
