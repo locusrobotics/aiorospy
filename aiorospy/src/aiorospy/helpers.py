@@ -40,7 +40,7 @@ class ExceptionMonitor:
                 exc = await self._exception_q.async_q.get()
                 raise exc
 
-        except asyncio.CancelledError as e_cancelled:
+        except asyncio.CancelledError:
             # Cancel any tasks that will no longer be monitored
             while self._pending_tasks:
                 task = self._pending_tasks.pop()
@@ -67,6 +67,9 @@ class ExceptionMonitor:
         self._pending_tasks.add(task)
 
     def _task_done_callback(self, task):
+        """ When a task monitored by this ExceptionMonitor finishes, we want to check if there are any uncaught
+        exceptions. Cancellations are normal and should be supressed, but everything else should be passed up to
+        the monitor queue. """
         try:
             self._pending_tasks.remove(task)
         except KeyError:
@@ -74,10 +77,14 @@ class ExceptionMonitor:
 
         try:
             exc = task.exception()
-        except (concurrent.futures.CancelledError, asyncio.CancelledError):
+        except asyncio.CancelledError:
+            # asyncio.Future.exception will raise CancelledError
             pass
         else:
-            if exc is not None:
+            # concurrent.futures.Future.exception will return CancelledError
+            if exc is None or isinstance(exc, concurrent.futures.CancelledError):
+                pass
+            else:
                 self._exception_q.sync_q.put(exc)
 
 
@@ -86,9 +93,10 @@ async def log_during(awaitable, msg, period, sink=logger.info):
         task = asyncio.create_task(awaitable)
         while True:
             try:
-                return await asyncio.wait_for(
+                result = await asyncio.wait_for(
                     asyncio.shield(task),
                     timeout=period)
+                return result
             except asyncio.TimeoutError:
                 sink(msg)
             except asyncio.CancelledError:

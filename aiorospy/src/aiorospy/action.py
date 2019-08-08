@@ -141,16 +141,17 @@ class AsyncActionClient:
             await self._exception_monitor.start()
         finally:
             # TODO(pbovbel) depends on https://github.com/ros/actionlib/pull/142
+            self._started_event.clear()
             self._client.stop()
             self._client = None
 
-    async def _started(self):
-        await log_during(self._started_event.wait(), f"Waiting for {self.name} client to be started...", 5.0)
+    async def _started(self, log_period=None):
+        await log_during(self._started_event.wait(), f"Waiting for {self.name} client to be started...", period=5.0)
 
     async def wait_for_server(self, log_period=None):
         """ Wait for the action server to connect to this client. """
-        await self._started()
-        await log_during(self._wait_for_server(), f"Waiting for {self.name} server...", log_period)
+        await self._started(log_period=log_period)
+        await log_during(self._wait_for_server(), f"Waiting for {self.name} server...", period=log_period)
 
     async def _wait_for_server(self):
         while True:
@@ -163,7 +164,7 @@ class AsyncActionClient:
         """ Send a goal to an action server. As in rospy, if you have not made sure the server is up and listening to
         the client, the goal will be swallowed.
         """
-        await self._started()
+        await self._started(log_period=5.0)
         async_handle = _AsyncGoalHandle(name=self.name, exception_monitor=self._exception_monitor, loop=self._loop)
         sync_handle = self._client.send_goal(
             goal,
@@ -180,7 +181,7 @@ class AsyncActionClient:
         resend the goal.
         """
         while True:
-            await self.wait_for_server(5.0)
+            await self.wait_for_server(log_period=5.0)
             handle = await self.send_goal(goal)
             try:
                 await asyncio.wait_for(handle.reach_status(GoalStatus.PENDING), timeout=resend_timeout)
