@@ -19,7 +19,6 @@
   
   <depend>aiorospy</depend>
   
-  <exec_depend>locus_msgs</exec_depend>
   <exec_depend>rospy_tutorials</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
