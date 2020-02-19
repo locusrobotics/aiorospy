@@ -1,5 +1,6 @@
 
 import asyncio
+import functools
 import logging
 import sys
 
@@ -33,7 +34,8 @@ class AsyncServiceProxy:
     async def send(self, *args, **kwargs):
         """ Send a request to a ROS service. """
         log_period = kwargs.pop('log_period', None)
-        return await log_during(self._loop.run_in_executor(None, self._srv_proxy.call, *args, **kwargs),
+        service_call = functools.partial(self._srv_proxy.call, *args, **kwargs)
+        return await log_during(self._loop.run_in_executor(None, service_call),
                                 f"Trying to call service {self.name}...", log_period)
 
     async def ensure(self, *args, **kwargs):
