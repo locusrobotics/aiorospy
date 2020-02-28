@@ -6,7 +6,8 @@ import janus
 import rospy
 from actionlib import ActionClient, ActionServer, CommState, GoalStatus
 
-from .helpers import ExceptionMonitor, log_during
+from .helpers import (ChildCancelled, ExceptionMonitor, detect_cancel,
+                      log_during)
 from .topic import AsyncSubscriber
 
 logger = logging.getLogger(__name__)
@@ -198,10 +199,12 @@ class AsyncActionClient:
 class AsyncActionServer:
     """ Async wrapper around the action server API. """
 
-    def __init__(self, name, action_spec, coro, loop=None):
+    def __init__(self, name, action_spec, coro, simple=False, loop=None):
         """ Initialize an action server. Incoming goals will be processed via the speficied coroutine. """
         self.name = name
         self.action_spec = action_spec
+        self.simple = simple
+
         self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._coro = coro
         self._tasks = {}
@@ -234,13 +237,41 @@ class AsyncActionServer:
                 pass
 
     def _goal_cb(self, goal_handle):
+        """ Process incoming goals by spinning off a new asynchronous task to handle the callback.
+        """
         goal_id = goal_handle.get_goal_id().id
-        task = asyncio.create_task(self._coro(goal_handle))
+        task = asyncio.create_task(self._wrapper_coro(
+            goal_id=goal_id,
+            goal_handle=goal_handle,
+            preempt_tasks={**self._tasks} if self.simple else {},
+        ))
         task.add_done_callback(partial(self._task_done_callback, goal_handle=goal_handle))
         self._exception_monitor.register_task(task)
         self._tasks[goal_id] = task
 
+    async def _wrapper_coro(self, goal_id, goal_handle, preempt_tasks={}):
+        """ Wrap the user-provided coroutine to allow the simple action mode to preempt any previously submitted goals.
+        """
+        if preempt_tasks:
+            rospy.logdebug(f"Before goal {goal_id}, preempting {' '.join(self._tasks.keys())}")
+
+        for other_task in preempt_tasks.values():
+            if not other_task.cancelled():
+                other_task.cancel()
+            try:
+                await detect_cancel(other_task)
+            except ChildCancelled:
+                pass  # supress propagating an 'inner' cancel
+            except asyncio.CancelledError:
+                goal_handle.set_canceled(f"Goal {goal_id} was preempted")
+                raise
+
+        rospy.logdebug(f"Starting callback for goal {goal_id}")
+        await self._coro(goal_handle)
+
     def _cancel_cb(self, goal_handle):
+        """ Process incoming cancellations by finding the matching task and cancelling it.
+        """
         goal_id = goal_handle.get_goal_id().id
         try:
             task = self._tasks[goal_id]
@@ -255,6 +286,8 @@ class AsyncActionServer:
     NON_TERMINAL_STATUS = PENDING_STATUS | ACTIVE_STATUS
 
     def _task_done_callback(self, task, goal_handle):
+        """ Process finished tasks and translate the result/exception into actionlib signals.
+        """
         goal_id = goal_handle.get_goal_id().id
         status = goal_handle.get_goal_status().status
         try:
@@ -263,7 +296,8 @@ class AsyncActionServer:
             if status in self.NON_TERMINAL_STATUS:
                 message = f"Task handler was cancelled, goal {goal_id} cancelled automatically"
                 goal_handle.set_canceled(text=message)
-                logger.warning(f"{message}. Please call set_canceled in the action handler.")
+                logger.warning(
+                    f"{message}. Please call set_canceled in the action server coroutine when CancelledError is raised")
         else:
             rejected_message = f"Goal {goal_id} rejected"
             aborted_message = f"Goal {goal_id} aborted"
@@ -284,7 +318,4 @@ class AsyncActionServer:
                     goal_handle.set_aborted(result=None, text=f"{aborted_message}, {reason}")
                     logger.warning(f"{aborted_message}, {reason}")
 
-        try:
-            del self._tasks[goal_id]
-        except KeyError:
-            pass
+        del self._tasks[goal_id]

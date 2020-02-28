@@ -89,6 +89,7 @@ class ExceptionMonitor:
 
 
 async def log_during(awaitable, msg, period, sink=logger.info):
+    """ Convenience function to repeatedly log an line, while some task has not completed. """
     if period is not None:
         task = asyncio.create_task(awaitable)
         while True:
@@ -105,3 +106,25 @@ async def log_during(awaitable, msg, period, sink=logger.info):
                 raise
     else:
         return await awaitable
+
+
+class ChildCancelled(asyncio.CancelledError):
+    pass
+
+
+async def detect_cancel(task):
+    """ asyncio makes it very hard to distinguish an inner cancel from an outer cancel. This is allows one to implement
+    an 'inverse shield'. See this thread https://stackoverflow.com/a/55424838/1198131.
+    """
+    cont = asyncio.get_event_loop().create_future()
+
+    def on_done(_):
+        if task.cancelled():
+            cont.set_exception(ChildCancelled())
+        elif task.exception() is not None:
+            cont.set_exception(task.exception())
+        else:
+            cont.set_result(task.result())
+
+    task.add_done_callback(on_done)
+    await cont

@@ -9,7 +9,7 @@ import rostest
 from actionlib import ActionClient as SyncActionClient
 from actionlib import GoalStatus
 from actionlib.msg import TestAction, TestGoal, TestResult
-from aiorospy import AsyncActionServer
+from aiorospy import AsyncActionClient, AsyncActionServer
 
 
 class TestActionServer(aiounittest.AsyncTestCase):
@@ -51,10 +51,11 @@ class TestActionServer(aiounittest.AsyncTestCase):
         async def goal_coro(goal_handle):
             try:
                 goal_handle.set_accepted()
-                await asyncio.sleep(1009000)
+                await asyncio.sleep(1000000)
             except asyncio.CancelledError:
                 goal_handle.set_canceled()
                 raise
+            goal_handle.set_succeeded()
 
         client = SyncActionClient("test_goal_canceled", TestAction)
         server = AsyncActionServer(client.ns, TestAction, coro=goal_coro)
@@ -93,6 +94,103 @@ class TestActionServer(aiounittest.AsyncTestCase):
 
         with self.assertRaises(RuntimeError):
             await server_task
+
+    async def test_server_simple(self):
+        event = asyncio.Event()
+
+        async def goal_coro(goal_handle):
+            delay = goal_handle.get_goal().goal
+            try:
+                if event.is_set():
+                    raise RuntimeError(f"Event wasn't cleared by another goal, bail!")
+                event.set()
+                goal_handle.set_accepted()
+
+                await asyncio.sleep(delay)
+
+            except asyncio.CancelledError:
+                event.clear()
+                goal_handle.set_canceled()
+                raise
+
+            event.clear()
+            goal_handle.set_succeeded(result=TestResult(delay))
+
+        client = SyncActionClient("test_server_simple", TestAction)
+        server = AsyncActionServer(client.ns, TestAction, coro=goal_coro, simple=True)
+        server_task = asyncio.create_task(server.start())
+
+        await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
+
+        handles = []
+        for i in range(100):
+            handles.append(client.send_goal(TestGoal(i + 1)))
+
+        last_handle = client.send_goal(TestGoal(0))
+        await self.wait_for_status(last_handle, GoalStatus.SUCCEEDED)
+
+        for handle in handles:
+            # Due to actionlib limitations and the frequency of goals, a lot of the early goal handles will get
+            # stuck as PENDING and never receive a status back. Luckily, AsyncActionClient will rate limit goal sending
+            # when using ensure_goal.
+            self.assertIn(handle.get_goal_status(), {GoalStatus.PREEMPTED, GoalStatus.PENDING})
+        self.assertEqual(last_handle.get_goal_status(), GoalStatus.SUCCEEDED)
+
+        server_task.cancel()
+        try:
+            await server_task
+        except asyncio.CancelledError:
+            pass
+
+    async def test_simple_ensure(self):
+        event = asyncio.Event()
+
+        async def goal_coro(goal_handle):
+            delay = goal_handle.get_goal().goal
+            try:
+                if event.is_set():
+                    raise RuntimeError(f"Event wasn't cleared by another goal, bail!")
+                event.set()
+                goal_handle.set_accepted()
+
+                await asyncio.sleep(delay)
+
+            except asyncio.CancelledError:
+                event.clear()
+                goal_handle.set_canceled()
+                raise
+
+            event.clear()
+            goal_handle.set_succeeded(result=TestResult(delay))
+
+        server = AsyncActionServer("test_simple_ensure", TestAction, coro=goal_coro, simple=True)
+        server_task = asyncio.create_task(server.start())
+
+        client = AsyncActionClient(server.name, TestAction)
+        client_task = asyncio.create_task(client.start())
+
+        handles = []
+        for i in range(100):
+            handles.append(await client.ensure_goal(TestGoal(i + 1), resend_timeout=0.1))
+
+        last_handle = await client.ensure_goal(TestGoal(0), resend_timeout=0.1)
+        await last_handle.reach_status(GoalStatus.SUCCEEDED)
+
+        for handle in handles:
+            self.assertEqual(handle.status, GoalStatus.PREEMPTED)
+        self.assertEqual(last_handle.status, GoalStatus.SUCCEEDED)
+
+        server_task.cancel()
+        try:
+            await server_task
+        except asyncio.CancelledError:
+            pass
+
+        client_task.cancel()
+        try:
+            await client_task
+        except asyncio.CancelledError:
+            pass
 
 
 if __name__ == '__main__':

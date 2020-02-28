@@ -1,10 +1,10 @@
 <?xml version="1.0" ?>
 <launch>
-  
+
   <test test-name="test_action_client" pkg="aiorospy" type="test_action_client.py" />
   <test test-name="test_action_server" pkg="aiorospy" type="test_action_server.py" />
   <test test-name="test_service_proxy" pkg="aiorospy" type="test_service_proxy.py" />
   <test test-name="test_service" pkg="aiorospy" type="test_service.py" />
   <test test-name="test_subscriber" pkg="aiorospy" type="test_subscriber.py" />
-  
+
 </launch>
