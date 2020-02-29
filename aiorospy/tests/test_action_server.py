@@ -123,8 +123,8 @@ class TestActionServer(aiounittest.AsyncTestCase):
         await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
 
         handles = []
-        for i in range(100):
-            handles.append(client.send_goal(TestGoal(i + 1)))
+        for i in range(10):
+            handles.append(client.send_goal(TestGoal(1000000)))
 
         last_handle = client.send_goal(TestGoal(0))
         await self.wait_for_status(last_handle, GoalStatus.SUCCEEDED)
@@ -169,8 +169,8 @@ class TestActionServer(aiounittest.AsyncTestCase):
         await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
 
         handles = []
-        for i in range(100):
-            handle = client.send_goal(TestGoal(i + 1))
+        for i in range(10):
+            handle = client.send_goal(TestGoal(1000000))
             # Make sure we don't spam goals too fast. This simulates AsyncActionClient's ensure_goal.
             await self.wait_for_status(handle, GoalStatus.ACTIVE)
             handles.append(handle)
