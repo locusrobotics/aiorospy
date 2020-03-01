@@ -232,6 +232,12 @@ class AsyncActionServer:
         if task:
             await deflector_shield(task)
 
+    async def cancel_all(self):
+        for task in self._tasks.values():
+            if not task.cancelled():
+                task.cancel()
+            await deflector_shield(other_task)
+
     def _goal_cb(self, goal_handle):
         """ Process incoming goals by spinning off a new asynchronous task to handle the callback.
         """
@@ -257,7 +263,7 @@ class AsyncActionServer:
             try:
                 await deflector_shield(other_task)
             except asyncio.CancelledError:
-                goal_handle.set_canceled(f"Goal {goal_id} was preempted")
+                goal_handle.set_canceled(f"Goal {goal_id} was preempted before starting")
                 raise
 
         rospy.logdebug(f"Starting callback for goal {goal_id}")

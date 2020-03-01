@@ -100,7 +100,7 @@ class TestActionClient(aiounittest.AsyncTestCase):
         goal_handle = await client.send_goal(TestGoal())
         await goal_handle.reach_status(GoalStatus.ACTIVE)
 
-        await goal_handle.cancel()
+        goal_handle.cancel()
         await goal_handle.reach_status(GoalStatus.PREEMPTED)
 
         client_task.cancel()
