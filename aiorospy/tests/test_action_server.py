@@ -4,6 +4,7 @@ import sys
 import unittest
 
 import aiounittest
+import janus
 import rospy
 import rostest
 from actionlib import ActionClient as SyncActionClient
@@ -47,7 +48,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
         except asyncio.CancelledError:
             pass
 
-    async def test_goal_canceled(self):
+    async def test_goal_canceled_from_client(self):
         async def goal_coro(goal_handle):
             try:
                 goal_handle.set_accepted()
@@ -57,7 +58,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
                 raise
             goal_handle.set_succeeded()
 
-        client = SyncActionClient("test_goal_canceled", TestAction)
+        client = SyncActionClient("test_goal_canceled_from_client", TestAction)
         server = AsyncActionServer(client.ns, TestAction, coro=goal_coro)
         server_task = asyncio.create_task(server.start())
 
@@ -67,6 +68,40 @@ class TestActionServer(aiounittest.AsyncTestCase):
         await self.wait_for_status(goal_handle, GoalStatus.ACTIVE)
 
         goal_handle.cancel()
+
+        await self.wait_for_status(goal_handle, GoalStatus.PREEMPTED)
+        self.assertEquals(goal_handle.get_goal_status(), GoalStatus.PREEMPTED)
+
+        server_task.cancel()
+        try:
+            await server_task
+        except asyncio.CancelledError:
+            pass
+
+    async def test_goal_canceled_from_server(self):
+        queue = janus.Queue()
+
+        async def goal_coro(goal_handle):
+            queue.sync_q.put_nowait(goal_handle)
+            try:
+                goal_handle.set_accepted()
+                await asyncio.sleep(1000000)
+            except asyncio.CancelledError:
+                goal_handle.set_canceled()
+                raise
+            goal_handle.set_succeeded()
+
+        client = SyncActionClient("test_goal_canceled_from_server", TestAction)
+        server = AsyncActionServer(client.ns, TestAction, coro=goal_coro)
+        server_task = asyncio.create_task(server.start())
+
+        await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
+        goal_handle = client.send_goal(TestGoal())
+
+        await self.wait_for_status(goal_handle, GoalStatus.ACTIVE)
+
+        server_goal_handle = await queue.async_q.get()
+        await server.cancel(server_goal_handle)
 
         await self.wait_for_status(goal_handle, GoalStatus.PREEMPTED)
         self.assertEquals(goal_handle.get_goal_status(), GoalStatus.PREEMPTED)
@@ -133,53 +168,6 @@ class TestActionServer(aiounittest.AsyncTestCase):
             # Due to goalspam above, a lot of the early goal handles will get stuck as PENDING and never receive a
             # status back.
             self.assertIn(handle.get_goal_status(), {GoalStatus.PREEMPTED, GoalStatus.PENDING})
-        self.assertEqual(last_handle.get_goal_status(), GoalStatus.SUCCEEDED)
-
-        server_task.cancel()
-        try:
-            await server_task
-        except asyncio.CancelledError:
-            pass
-
-    async def test_server_simple_nospam(self):
-        event = asyncio.Event()
-
-        async def goal_coro(goal_handle):
-            delay = goal_handle.get_goal().goal
-            try:
-                if event.is_set():
-                    raise RuntimeError(f"Event wasn't cleared by another goal, bail!")
-                event.set()
-                goal_handle.set_accepted()
-
-                await asyncio.sleep(delay)
-
-            except asyncio.CancelledError:
-                event.clear()
-                goal_handle.set_canceled()
-                raise
-
-            event.clear()
-            goal_handle.set_succeeded(result=TestResult(delay))
-
-        client = SyncActionClient("test_server_simple_nospam", TestAction)
-        server = AsyncActionServer(client.ns, TestAction, coro=goal_coro, simple=True)
-        server_task = asyncio.create_task(server.start())
-
-        await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
-
-        handles = []
-        for i in range(10):
-            handle = client.send_goal(TestGoal(1000000))
-            # Make sure we don't spam goals too fast. This simulates AsyncActionClient's ensure_goal.
-            await self.wait_for_status(handle, GoalStatus.ACTIVE)
-            handles.append(handle)
-
-        last_handle = client.send_goal(TestGoal(0))
-        await self.wait_for_status(last_handle, GoalStatus.SUCCEEDED)
-
-        for handle in handles:
-            self.assertEqual(handle.get_goal_status(), GoalStatus.PREEMPTED)
         self.assertEqual(last_handle.get_goal_status(), GoalStatus.SUCCEEDED)
 
         server_task.cancel()

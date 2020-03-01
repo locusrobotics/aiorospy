@@ -19,8 +19,8 @@ class TestActionClient(aiounittest.AsyncTestCase):
     def setUpClass(cls):
         rospy.init_node("test_action_client", anonymous=True, disable_signals=True)
 
-    def create_server(self, ns, goal_cb, auto_start=True):
-        action_server = ActionServer(ns, TestAction, goal_cb=goal_cb, auto_start=False)
+    def create_server(self, ns, goal_cb=None, cancel_cb=None, auto_start=True):
+        action_server = ActionServer(ns, TestAction, goal_cb=goal_cb, cancel_cb=cancel_cb, auto_start=False)
         if auto_start:
             action_server.start()
         return action_server
@@ -78,6 +78,30 @@ class TestActionClient(aiounittest.AsyncTestCase):
 
         with self.assertRaises(RuntimeError):
             await goal_handle.reach_status(GoalStatus.REJECTED)
+
+        client_task.cancel()
+        try:
+            await client_task
+        except asyncio.CancelledError:
+            pass
+
+    async def test_cancel(self):
+        def goal_cb(goal_handle):
+            goal_handle.set_accepted()
+
+        def cancel_cb(goal_handle):
+            goal_handle.set_canceled()
+
+        server = self.create_server("test_cancel", goal_cb, cancel_cb)
+        client = AsyncActionClient(server.ns, TestAction)
+        client_task = asyncio.create_task(client.start())
+
+        await client.wait_for_server()
+        goal_handle = await client.send_goal(TestGoal())
+        await goal_handle.reach_status(GoalStatus.ACTIVE)
+
+        await goal_handle.cancel()
+        await goal_handle.reach_status(GoalStatus.PREEMPTED)
 
         client_task.cancel()
         try:
