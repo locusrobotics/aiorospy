@@ -6,8 +6,7 @@ import janus
 import rospy
 from actionlib import ActionClient, ActionServer, CommState, GoalStatus
 
-from .helpers import (ChildCancelled, ExceptionMonitor, detect_cancel,
-                      log_during)
+from .helpers import ExceptionMonitor, deflector_shield, log_during
 from .topic import AsyncSubscriber
 
 logger = logging.getLogger(__name__)
@@ -231,10 +230,7 @@ class AsyncActionServer:
         """ Cancel a particular goal's handler task. """
         task = self._cancel_cb(goal_handle)
         if task:
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
+            await deflector_shield(task)
 
     def _goal_cb(self, goal_handle):
         """ Process incoming goals by spinning off a new asynchronous task to handle the callback.
@@ -259,9 +255,7 @@ class AsyncActionServer:
             if not other_task.cancelled():
                 other_task.cancel()
             try:
-                await detect_cancel(other_task)
-            except ChildCancelled:
-                pass  # supress propagating an 'inner' cancel
+                await deflector_shield(other_task)
             except asyncio.CancelledError:
                 goal_handle.set_canceled(f"Goal {goal_id} was preempted")
                 raise
