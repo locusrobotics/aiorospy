@@ -159,15 +159,15 @@ class TestActionServer(aiounittest.AsyncTestCase):
 
         handles = []
         for i in range(10):
-            handles.append(client.send_goal(TestGoal(1000000)))
+            handle = client.send_goal(TestGoal(1000000))
+            await self.wait_for_status(handle, GoalStatus.ACTIVE)
+            handles.append(handle)
 
         last_handle = client.send_goal(TestGoal(0))
         await self.wait_for_status(last_handle, GoalStatus.SUCCEEDED)
 
         for handle in handles:
-            # Due to goalspam above, a lot of the early goal handles will get stuck as PENDING and never receive a
-            # status back.
-            self.assertIn(handle.get_goal_status(), {GoalStatus.PREEMPTED, GoalStatus.PENDING})
+            self.assertEqual(handle.get_goal_status(), GoalStatus.PREEMPTED)
         self.assertEqual(last_handle.get_goal_status(), GoalStatus.SUCCEEDED)
 
         server_task.cancel()

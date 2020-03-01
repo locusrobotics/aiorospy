@@ -236,7 +236,7 @@ class AsyncActionServer:
         for task in self._tasks.values():
             if not task.cancelled():
                 task.cancel()
-            await deflector_shield(other_task)
+            await deflector_shield(task)
 
     def _goal_cb(self, goal_handle):
         """ Process incoming goals by spinning off a new asynchronous task to handle the callback.
