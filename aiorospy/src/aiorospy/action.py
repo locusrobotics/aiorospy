@@ -92,13 +92,17 @@ class _AsyncGoalHandle:
         return self.status in {GoalStatus.PREEMPTED, GoalStatus.PREEMPTING, GoalStatus.RECALLED, GoalStatus.RECALLING}
 
     def _transition_cb(self, goal_handle):
-        future = asyncio.run_coroutine_threadsafe(self._process_transition(
-            goal_handle.get_goal_status(),
-            goal_handle.get_comm_state(),
-            goal_handle.get_result(),
-            goal_handle.get_goal_status_text(),
-        ), loop=self._loop)
-        self._exception_monitor.register_task(future)
+        try:
+            future = asyncio.run_coroutine_threadsafe(self._process_transition(
+                goal_handle.get_goal_status(),
+                goal_handle.get_comm_state(),
+                goal_handle.get_result(),
+                goal_handle.get_goal_status_text(),
+            ), loop=self._loop)
+        except RuntimeError:
+            # Don't raise errors if a transition comes after the event loop is shutdown
+            if not self._loop.is_closed():
+                raise
 
     def _feedback_cb(self, goal_handle, feedback):
         self._feedback_queue.sync_q.put(feedback)

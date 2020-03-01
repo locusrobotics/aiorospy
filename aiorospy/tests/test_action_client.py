@@ -11,6 +11,7 @@ import rostest
 from actionlib import ActionServer, GoalStatus
 from actionlib.msg import TestAction, TestFeedback, TestGoal, TestResult
 from aiorospy import AsyncActionClient
+from aiorospy.helpers import deflector_shield
 
 
 class TestActionClient(aiounittest.AsyncTestCase):
@@ -44,14 +45,12 @@ class TestActionClient(aiounittest.AsyncTestCase):
         async for idx, feedback in aiostream.stream.enumerate(goal_handle.feedback()):
             self.assertEqual(feedback, TestFeedback(idx))
 
-        self.assertEqual(GoalStatus.SUCCEEDED, goal_handle.status)
+        await goal_handle.wait()
+        self.assertEqual(goal_handle.status, GoalStatus.SUCCEEDED)
         self.assertEqual(expected_result, goal_handle.result)
 
         client_task.cancel()
-        try:
-            await client_task
-        except asyncio.CancelledError:
-            pass
+        await deflector_shield(client_task)
 
     async def test_wait_for_result(self):
         received_accepted = Event()
@@ -80,10 +79,7 @@ class TestActionClient(aiounittest.AsyncTestCase):
             await goal_handle.reach_status(GoalStatus.REJECTED)
 
         client_task.cancel()
-        try:
-            await client_task
-        except asyncio.CancelledError:
-            pass
+        await deflector_shield(client_task)
 
     async def test_cancel(self):
         def goal_cb(goal_handle):
@@ -104,10 +100,7 @@ class TestActionClient(aiounittest.AsyncTestCase):
         await goal_handle.reach_status(GoalStatus.PREEMPTED)
 
         client_task.cancel()
-        try:
-            await client_task
-        except asyncio.CancelledError:
-            pass
+        await deflector_shield(client_task)
 
     async def test_ensure(self):
         def goal_cb(goal_handle):
@@ -126,10 +119,7 @@ class TestActionClient(aiounittest.AsyncTestCase):
         await goal_handle.reach_status(GoalStatus.ACTIVE)
 
         client_task.cancel()
-        try:
-            await client_task
-        except asyncio.CancelledError:
-            pass
+        await deflector_shield(client_task)
 
 
 if __name__ == '__main__':

@@ -11,6 +11,7 @@ from actionlib import ActionClient as SyncActionClient
 from actionlib import GoalStatus
 from actionlib.msg import TestAction, TestGoal, TestResult
 from aiorospy import AsyncActionServer
+from aiorospy.helpers import deflector_shield
 
 
 class TestActionServer(aiounittest.AsyncTestCase):
@@ -43,10 +44,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
         self.assertEqual(goal_handle.get_result().result, magic_value)
 
         server_task.cancel()
-        try:
-            await server_task
-        except asyncio.CancelledError:
-            pass
+        await deflector_shield(server_task)
 
     async def test_goal_canceled_from_client(self):
         async def goal_coro(goal_handle):
@@ -73,10 +71,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
         self.assertEquals(goal_handle.get_goal_status(), GoalStatus.PREEMPTED)
 
         server_task.cancel()
-        try:
-            await server_task
-        except asyncio.CancelledError:
-            pass
+        await deflector_shield(server_task)
 
     async def test_goal_canceled_from_server(self):
         queue = janus.Queue()
@@ -107,10 +102,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
         self.assertEquals(goal_handle.get_goal_status(), GoalStatus.PREEMPTED)
 
         server_task.cancel()
-        try:
-            await server_task
-        except asyncio.CancelledError:
-            pass
+        await deflector_shield(server_task)
 
     async def test_goal_exception(self):
         async def goal_coro(goal_handle):
@@ -128,7 +120,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
         self.assertEquals(goal_handle.get_goal_status(), GoalStatus.ABORTED)
 
         with self.assertRaises(RuntimeError):
-            await server_task
+            await deflector_shield(server_task)
 
     async def test_server_simple(self):
         event = asyncio.Event()
@@ -171,10 +163,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
         self.assertEqual(last_handle.get_goal_status(), GoalStatus.SUCCEEDED)
 
         server_task.cancel()
-        try:
-            await server_task
-        except asyncio.CancelledError:
-            pass
+        await deflector_shield(server_task)
 
 
 if __name__ == '__main__':
