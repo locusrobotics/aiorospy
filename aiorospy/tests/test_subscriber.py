@@ -3,11 +3,11 @@ import asyncio
 import sys
 import unittest
 
-import aiostream
 import aiounittest
 import rospy
 import rostest
 from aiorospy import AsyncSubscriber
+from aiorospy.helpers import deflector_shield
 from std_msgs.msg import Int16
 
 
@@ -43,7 +43,7 @@ class TestSubscriber(aiounittest.AsyncTestCase):
         self.assertEqual(to_send, received)
 
         pub_task.cancel()
-        await pub_task
+        await deflector_shield(pub_task)
 
     @unittest.skip("Test is flaky, hard to be deterministic across three buffers.")
     async def test_subscriber_small_queue(self):
@@ -75,7 +75,7 @@ class TestSubscriber(aiounittest.AsyncTestCase):
         self.assertTrue(len(received) < message_quantity)
 
         pub_task.cancel()
-        await pub_task
+        await deflector_shield(pub_task)
 
 
 if __name__ == '__main__':

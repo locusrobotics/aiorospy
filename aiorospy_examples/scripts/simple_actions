@@ -10,22 +10,11 @@ from actionlib.msg import TestAction, TestGoal, TestResult
 class SimpleActionDemo:
 
     def __init__(self):
-        self.server = aiorospy.AsyncActionServer('async_simple_action', TestAction, self.handle_action)
+        self.server = aiorospy.AsyncActionServer('async_simple_action', TestAction, self.handle_action, simple=True)
         self.client = aiorospy.AsyncActionClient('async_simple_action', TestAction)
-        self.current_goal_handle = None
 
     async def handle_action(self, goal_handle):
         goal_id = goal_handle.get_goal_id().id.split('-')[1]
-        old_goal_handle = self.current_goal_handle
-        self.current_goal_handle = goal_handle
-        try:
-            if old_goal_handle:
-                await asyncio.shield(self.server.cancel(old_goal_handle))
-
-        except asyncio.CancelledError:
-            print(f"Server: Interrupted before starting task {goal_id}")
-            goal_handle.set_rejected()
-            raise
 
         try:
             delay = goal_handle.get_goal().goal / 1000
