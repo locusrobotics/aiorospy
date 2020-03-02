@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import functools
 import logging
 
 import janus
@@ -88,7 +89,17 @@ class ExceptionMonitor:
                 self._exception_q.sync_q.put(exc)
 
 
-async def log_during(awaitable, msg, period, sink=logger.info):
+def iscoroutinefunction_or_partial(fxn):
+    """ Before python3.8, asyncio.iscoroutine is unable to examine coroutines wrapped via partial.
+    See https://stackoverflow.com/a/52422903/1198131
+    """
+    while isinstance(fxn, functools.partial):
+        fxn = fxn.func
+    return asyncio.iscoroutinefunction(fxn)
+
+
+async def do_while(awaitable, period, do, *args, **kwargs):
+    """ Convience function to periodically 'do' a callable while an awaitable is in progress. """
     if period is not None:
         task = asyncio.create_task(awaitable)
         while True:
@@ -98,10 +109,50 @@ async def log_during(awaitable, msg, period, sink=logger.info):
                     timeout=period)
                 return result
             except asyncio.TimeoutError:
-                sink(msg)
+                if iscoroutinefunction_or_partial(do):
+                    await do(*args, **kwargs)
+                else:
+                    do(*args, **kwargs)
             except asyncio.CancelledError:
                 task.cancel()
                 await task
                 raise
     else:
         return await awaitable
+
+
+async def log_during(awaitable, msg, period, sink=logger.info):
+    """ Convenience function to repeatedly log a line, while some task has not completed. """
+    return await do_while(awaitable, period, sink, msg)
+
+
+class ChildCancelled(asyncio.CancelledError):
+    pass
+
+
+async def detect_cancel(task):
+    """ asyncio makes it very hard to distinguish an inner cancel from an outer cancel.
+    See this thread https://stackoverflow.com/a/55424838/1198131.
+    """
+    cont = asyncio.get_event_loop().create_future()
+
+    def on_done(_):
+        if task.cancelled():
+            cont.set_exception(ChildCancelled())
+        elif task.exception() is not None:
+            cont.set_exception(task.exception())
+        else:
+            cont.set_result(task.result())
+
+    task.add_done_callback(on_done)
+    await cont
+
+
+async def deflector_shield(task):
+    """ Wrap a task with deflector_shield if you want to await its completion from a coroutine, but not get cancelled
+    yourself if the wrapped task is cancelled.
+    """
+    try:
+        return await detect_cancel(asyncio.shield(task))
+    except ChildCancelled:
+        return None  # supress propagating an 'inner' cancel

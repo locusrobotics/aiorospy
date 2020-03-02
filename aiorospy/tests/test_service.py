@@ -7,6 +7,7 @@ import aiounittest
 import rospy
 import rostest
 from aiorospy import AsyncService
+from aiorospy.helpers import deflector_shield
 from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
 
 
@@ -33,6 +34,7 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
         self.assertEquals(True, response.success)
 
         server_task.cancel()
+        await deflector_shield(server_task)
 
     async def test_service_exception(self):
         loop = asyncio.get_running_loop()
@@ -49,7 +51,7 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
             response = await loop.run_in_executor(None, self.client.call, True)
 
         with self.assertRaises(RuntimeError):
-            await server_task
+            await deflector_shield(server_task)
 
 
 if __name__ == '__main__':
