@@ -32,39 +32,40 @@ class _AsyncGoalHandle:
         """ Async generator providing feedback from the goal. The generator terminates when the goal
         is done.
         """
-        while True:
-            terminal_status = asyncio.create_task(self._done_event.wait())
-            new_feedback = asyncio.create_task(self._feedback_queue.async_q.get())
-            done, pending = await asyncio.wait(
-                {terminal_status, new_feedback},
-                return_when=asyncio.FIRST_COMPLETED,
-                timeout=log_period)
-
-            if new_feedback in done:
-                terminal_status.cancel()
-                await terminal_status
-                yield new_feedback.result()
-
-            elif terminal_status in done:
-                new_feedback.cancel()
+        terminal_status = asyncio.create_task(self._done_event.wait())
+        try:
+            while True:
                 try:
-                    await new_feedback
-                except asyncio.CancelledError:
-                    pass
-                return
+                    new_feedback = asyncio.create_task(self._feedback_queue.async_q.get())
+                    done, pending = await asyncio.wait(
+                        {terminal_status, new_feedback},
+                        return_when=asyncio.FIRST_COMPLETED,
+                        timeout=log_period)
 
-            else:
-                logger.info(f"Waiting for feedback on {self.goal_id} from {self._name}")
+                    if new_feedback in done:
+                        yield new_feedback.result()
+
+                    elif terminal_status in done:
+                        return
+
+                    else:
+                        logger.info(f"Waiting for feedback on {self.goal_id} from {self._name}")
+                finally:
+                    new_feedback.cancel()
+                    await deflector_shield(new_feedback)
+        finally:
+            terminal_status.cancel()
+            await deflector_shield(terminal_status)
 
     async def reach_status(self, status, log_period=None):
         """ Await until the goal reaches a particular status. """
         while True:
-            if status in self._old_statuses:
-                return
-            elif self._done_event.is_set():
-                raise RuntimeError(f"Action is done, will never reach status {GoalStatus.to_string(status)}")
-            else:
-                async with self._status_cond:
+            async with self._status_cond:
+                if status in self._old_statuses:
+                    return
+                elif self._done_event.is_set():
+                    raise RuntimeError(f"Action is done, will never reach status {GoalStatus.to_string(status)}")
+                else:
                     await log_during(
                         self._status_cond.wait(),
                         f"Waiting for {self.goal_id} on {self._name} to reach {GoalStatus.to_string(status)}",
@@ -94,10 +95,11 @@ class _AsyncGoalHandle:
     def _transition_cb(self, goal_handle):
         try:
             future = asyncio.run_coroutine_threadsafe(self._process_transition(
-                goal_handle.get_goal_status(),
-                goal_handle.get_comm_state(),
-                goal_handle.get_result(),
-                goal_handle.get_goal_status_text(),
+                # We must use these accessors here instead of passing through goal_handle to avoid hitting deadlock
+                status=goal_handle.get_goal_status(),
+                comm_state=goal_handle.get_comm_state(),
+                text=goal_handle.get_goal_status_text(),
+                result=goal_handle.get_result()
             ), loop=self._loop)
         except RuntimeError:
             # Don't raise errors if a transition comes after the event loop is shutdown
@@ -107,20 +109,22 @@ class _AsyncGoalHandle:
     def _feedback_cb(self, goal_handle, feedback):
         self._feedback_queue.sync_q.put(feedback)
 
-    async def _process_transition(self, status, comm_state, result, text):
-        logger.debug(f"Event in goal {self.goal_id}: status {GoalStatus.to_string(status)} result {result}")
-
+    async def _process_transition(self, status, comm_state, text, result):
         async with self._status_cond:
             self.status = status
+            self.comm_state = comm_state
             self.text = text
-            if status not in self._old_statuses:
-                self._old_statuses.add(status)
+
+            logger.debug(f"Event in goal {self.goal_id}: status {GoalStatus.to_string(status)} result {result}")
+
+            if self.status not in self._old_statuses:
+                self._old_statuses.add(self.status)
                 # (pbovbel) hack, if you accept a goal too quickly, we never see PENDING status
                 # this is probably an issue elsewhere, and a DAG of action states would be great to have.
-                if status != GoalStatus.PENDING and GoalStatus.PENDING not in self._old_statuses:
+                if self.status != GoalStatus.PENDING and GoalStatus.PENDING not in self._old_statuses:
                     self._old_statuses.add(GoalStatus.PENDING)
 
-            if comm_state == CommState.DONE:
+            if self.comm_state == CommState.DONE:
                 self.result = result
                 self._done_event.set()
 
@@ -207,10 +211,10 @@ class AsyncActionServer:
         self.name = name
         self.action_spec = action_spec
         self.simple = simple
+        self.tasks = {}
 
         self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._coro = coro
-        self._tasks = {}
 
         self._exception_monitor = ExceptionMonitor(loop=self._loop)
 
@@ -237,7 +241,7 @@ class AsyncActionServer:
             await deflector_shield(task)
 
     async def cancel_all(self):
-        for task in self._tasks.values():
+        for task in self.tasks.values():
             if not task.cancelled():
                 task.cancel()
             await deflector_shield(task)
@@ -249,17 +253,17 @@ class AsyncActionServer:
         task = asyncio.create_task(self._wrapper_coro(
             goal_id=goal_id,
             goal_handle=goal_handle,
-            preempt_tasks={**self._tasks} if self.simple else {},
+            preempt_tasks={**self.tasks} if self.simple else {},
         ))
         task.add_done_callback(partial(self._task_done_callback, goal_handle=goal_handle))
         self._exception_monitor.register_task(task)
-        self._tasks[goal_id] = task
+        self.tasks[goal_id] = task
 
     async def _wrapper_coro(self, goal_id, goal_handle, preempt_tasks={}):
         """ Wrap the user-provided coroutine to allow the simple action mode to preempt any previously submitted goals.
         """
         if preempt_tasks:
-            rospy.logdebug(f"Before goal {goal_id}, preempting {' '.join(self._tasks.keys())}")
+            logger.debug(f"Before goal {goal_id}, preempting {' '.join(self.tasks.keys())}")
 
         for other_task in preempt_tasks.values():
             if not other_task.cancelled():
@@ -270,7 +274,7 @@ class AsyncActionServer:
                 goal_handle.set_canceled(f"Goal {goal_id} was preempted before starting")
                 raise
 
-        rospy.logdebug(f"Starting callback for goal {goal_id}")
+        logger.debug(f"Starting callback for goal {goal_id}")
         await self._coro(goal_handle)
 
     def _cancel_cb(self, goal_handle):
@@ -278,7 +282,7 @@ class AsyncActionServer:
         """
         goal_id = goal_handle.get_goal_id().id
         try:
-            task = self._tasks[goal_id]
+            task = self.tasks[goal_id]
             task.cancel()
             return task
         except KeyError:
@@ -322,4 +326,4 @@ class AsyncActionServer:
                     goal_handle.set_aborted(result=None, text=f"{aborted_message}, {reason}")
                     logger.warning(f"{aborted_message}, {reason}")
 
-        del self._tasks[goal_id]
+        del self.tasks[goal_id]

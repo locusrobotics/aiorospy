@@ -3,7 +3,6 @@ import asyncio
 import sys
 import unittest
 
-import aiostream
 import aiounittest
 import rospy
 import rostest

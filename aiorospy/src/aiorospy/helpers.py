@@ -122,7 +122,7 @@ async def do_while(awaitable, period, do, *args, **kwargs):
 
 
 async def log_during(awaitable, msg, period, sink=logger.info):
-    """ Convenience function to repeatedly log an line, while some task has not completed. """
+    """ Convenience function to repeatedly log a line, while some task has not completed. """
     return await do_while(awaitable, period, sink, msg)
 
 

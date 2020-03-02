@@ -8,7 +8,7 @@ import janus
 import rospy
 import rostest
 from actionlib import ActionClient as SyncActionClient
-from actionlib import GoalStatus
+from actionlib import CommState, GoalStatus
 from actionlib.msg import TestAction, TestGoal, TestResult
 from aiorospy import AsyncActionServer
 from aiorospy.helpers import deflector_shield
@@ -22,6 +22,10 @@ class TestActionServer(aiounittest.AsyncTestCase):
 
     async def wait_for_status(self, goal_handle, status):
         while goal_handle.get_goal_status() != status:
+            await asyncio.sleep(0.1)
+
+    async def wait_for_result(self, goal_handle):
+        while goal_handle.get_comm_state() != CommState.DONE:
             await asyncio.sleep(0.1)
 
     async def test_goal_succeeded(self):
@@ -38,7 +42,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
         await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
         goal_handle = client.send_goal(TestGoal(magic_value))
 
-        await self.wait_for_status(goal_handle, GoalStatus.SUCCEEDED)
+        await self.wait_for_result(goal_handle)
 
         self.assertEqual(goal_handle.get_goal_status(), GoalStatus.SUCCEEDED)
         self.assertEqual(goal_handle.get_result().result, magic_value)
