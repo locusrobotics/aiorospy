@@ -2,6 +2,8 @@ import asyncio
 import concurrent.futures
 import functools
 import logging
+import subprocess
+import time
 
 import janus
 import rospy
@@ -156,3 +158,68 @@ async def deflector_shield(task):
         return await detect_cancel(asyncio.shield(task))
     except ChildCancelled:
         return None  # supress propagating an 'inner' cancel
+
+
+async def run_command(command, sudo=False, check=False, wait=True, capture_output=False, *args, **kwargs):
+    """ Higher level wrapper for asyncio.subprocess_exec, to run a command asynchronously.
+    :param command: Command to be executed in a list. e.g. ['ls', '-l']
+    :param sudo: Appends sudo before the command.
+    :param check: Check if the command exited with a 0 returncode.
+    :param wait: Wait for the command to complete. If false, returns a handle to the process.
+    :param capture_output: Pipe stdout and stderr to the process handle.
+    """
+    if sudo:
+        command = ['sudo', '-S'] + command
+
+    logger.debug(' '.join(command))
+
+    if capture_output:
+        kwargs['stdout'] = asyncio.subprocess.PIPE
+        kwargs['stderr'] = asyncio.subprocess.PIPE
+
+    process = await asyncio.create_subprocess_exec(
+        *command, *args, **kwargs)
+
+    if not wait:
+        return process
+
+    stdout, stderr = await process.communicate()
+
+    if check and process.returncode != 0:
+        raise subprocess.CalledProcessError(returncode=process.returncode,
+                                            cmd=command,
+                                            output=stdout,
+                                            stderr=stderr)
+
+    return subprocess.CompletedProcess(args=command,
+                                       returncode=process.returncode,
+                                       stdout=stdout,
+                                       stderr=stderr)
+
+
+class Timer:
+    """ Run something periodically, suspending the coroutine inbetween.
+    ```
+    timer = Timer(period=period)
+    while True:
+        async with timer:
+            something()
+    ```
+    """
+    def __init__(self, period=1.0):
+        self.period = period
+        self._next = None
+
+    async def acquire(self):
+        if self._next is not None:
+            delta = self._next - time.time()
+            if delta > 0:
+                await asyncio.sleep(delta)
+
+        self._next = time.time() + self.period
+
+    async def __aenter__(self):
+        await self.acquire()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        pass
