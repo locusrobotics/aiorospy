@@ -161,10 +161,12 @@ async def deflector_shield(task):
 
 
 async def run_command(command, sudo=False, check=False, wait=True, capture_output=False, *args, **kwargs):
-    """Runs a linux command using asyncio.subprocess_exec
+    """ Higher level wrapper for asyncio.subprocess_exec, to run a command asynchronously.
     :param command: Command to be executed in a list. e.g. ['ls', '-l']
     :param sudo: Appends sudo before the command.
     :param check: Check if the command exited with a 0 returncode.
+    :param wait: Wait for the command to complete. If false, returns a handle to the process.
+    :param capture_output: Pipe stdout and stderr to the process handle.
     """
     if sudo:
         command = ['sudo', '-S'] + command
@@ -196,6 +198,14 @@ async def run_command(command, sudo=False, check=False, wait=True, capture_outpu
 
 
 class Timer:
+    """ Run something periodically, suspending the coroutine inbetween.
+    ```
+    timer = Timer(period=period)
+    while True:
+        async with timer:
+            something()
+    ```
+    """
     def __init__(self, period=1.0):
         self.period = period
         self._next = None
