@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import contextlib
 import functools
 import logging
 import subprocess
@@ -160,7 +161,8 @@ async def deflector_shield(task):
         return None  # supress propagating an 'inner' cancel
 
 
-async def run_command(command, sudo=False, check=False, wait=True, capture_output=False, *args, **kwargs):
+@contextlib.asynccontextmanager
+async def subprocess_run(command, sudo=False, capture_output=False, terminate_timeout=5.0, *args, **kwargs):
     """ Higher level wrapper for asyncio.subprocess_exec, to run a command asynchronously.
     :param command: Command to be executed in a list. e.g. ['ls', '-l']
     :param sudo: Appends sudo before the command.
@@ -168,6 +170,14 @@ async def run_command(command, sudo=False, check=False, wait=True, capture_outpu
     :param wait: Wait for the command to complete. If false, returns a handle to the process.
     :param capture_output: Pipe stdout and stderr to the process handle.
     """
+    process = await subprocess_start(command, sudo, capture_output, *args, **kwargs)
+    try:
+        yield process
+    finally:
+        await subprocess_end(process, terminate_timeout)
+
+
+async def subprocess_start(command, sudo=False, capture_output=False, *args, **kwargs):
     if sudo:
         command = ['sudo', '-S'] + command
 
@@ -180,18 +190,33 @@ async def run_command(command, sudo=False, check=False, wait=True, capture_outpu
     process = await asyncio.create_subprocess_exec(
         *command, *args, **kwargs)
 
-    if not wait:
-        return process
+    return process
+
+
+async def subprocess_end(process, terminate_timeout=5.0):
+    if process.returncode is None:
+        process.terminate()
+        try:
+            await asyncio.wait_for(process.wait(), timeout=terminate_timeout)
+        except asyncio.TimeoutError:
+            logger.warn(f"Process did not terminate, escalating to kill: {command}")
+            process.kill()
+            await process.wait()
+
+
+async def subprocess_complete(process, check=False):
+    # This will not be accessible after process.communicate() completes
+    args = process._transport._proc.args
 
     stdout, stderr = await process.communicate()
 
     if check and process.returncode != 0:
         raise subprocess.CalledProcessError(returncode=process.returncode,
-                                            cmd=command,
+                                            cmd=args,
                                             output=stdout,
                                             stderr=stderr)
 
-    return subprocess.CompletedProcess(args=command,
+    return subprocess.CompletedProcess(args=args,
                                        returncode=process.returncode,
                                        stdout=stdout,
                                        stderr=stderr)
@@ -208,18 +233,14 @@ class Timer:
     """
     def __init__(self, period=1.0):
         self.period = period
-        self._next = None
-
-    async def acquire(self):
-        if self._next is not None:
-            delta = self._next - time.time()
-            if delta > 0:
-                await asyncio.sleep(delta)
-
-        self._next = time.time() + self.period
+        self.last = self.now = time.time()
 
     async def __aenter__(self):
-        await self.acquire()
+        delta = self.now + self.period - time.time()
+        if delta > 0:
+            await asyncio.sleep(delta)
+
+        self.now = time.time()
 
     async def __aexit__(self, exc_type, exc, tb):
-        pass
+        self.last = self.now
