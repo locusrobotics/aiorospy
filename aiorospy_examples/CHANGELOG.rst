@@ -2,6 +2,15 @@
 Changelog for package aiorospy_examples
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Implement simple action server (`#26 <https://github.com/locusrobotics/aiorospy/issues/26>`_)
+  Implement proper simple action server, and fix a bunch of flaky tests.
+  (cherry picked from commit f4bbfee7b04a07c7cde889ccf41d9018e228e181)
+* Remove locus_msgs
+  (cherry picked from commit a36176707e367d40cb583682c001b7c75cd7467d)
+* Contributors: Paul Bovbel
+
 0.1.0 (2019-07-12)
 ------------------
 * Cleanup (`#18 <https://github.com/locusrobotics/aiorospy/issues/18>`_)

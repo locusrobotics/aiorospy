@@ -2,6 +2,26 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Make subprocess a context manager to ensure shutdown; expose timing vars from timer (`#28 <https://github.com/locusrobotics/aiorospy/issues/28>`_)
+  (cherry picked from commit 9594cdeba80273fe75e34ed204d01cb5a90ebbcf)
+* Add Timer and subprocess helpers (`#27 <https://github.com/locusrobotics/aiorospy/issues/27>`_)
+  * Add Timer and subprocess helpers
+  * Fix comments
+  (cherry picked from commit c64378a2957b9b070d641bc35bacf425872f0fa3)
+* Implement simple action server (`#26 <https://github.com/locusrobotics/aiorospy/issues/26>`_)
+  Implement proper simple action server, and fix a bunch of flaky tests.
+  (cherry picked from commit f4bbfee7b04a07c7cde889ccf41d9018e228e181)
+* run_in_executor doesn't take kwargs (`#25 <https://github.com/locusrobotics/aiorospy/issues/25>`_)
+  (cherry picked from commit 2ef6dab9d892ab2f2bf8d53190eedf19561a8cce)
+* Update to aiostream 0.3.3 (`#21 <https://github.com/locusrobotics/aiorospy/issues/21>`_)
+  fixes a bug during installation in some environments, see https://github.com/vxgmichel/aiostream/pull/42
+  (cherry picked from commit 3252a533d9bab1be30299ebc047de57684e26058)
+* Fix exception monitor handling of concurrent.futures.CancelledError (`#20 <https://github.com/locusrobotics/aiorospy/issues/20>`_)
+  (cherry picked from commit 2380daed9038a7abb66fdbc7052c8dbd82209238)
+* Contributors: Andreas Bresser, Paul Bovbel
+
 0.1.0 (2019-07-12)
 ------------------
 * Cleanup (`#18 <https://github.com/locusrobotics/aiorospy/issues/18>`_)
