@@ -2,8 +2,8 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.1 (2020-03-24)
+------------------
 * Make subprocess a context manager to ensure shutdown; expose timing vars from timer (`#28 <https://github.com/locusrobotics/aiorospy/issues/28>`_)
   (cherry picked from commit 9594cdeba80273fe75e34ed204d01cb5a90ebbcf)
 * Add Timer and subprocess helpers (`#27 <https://github.com/locusrobotics/aiorospy/issues/27>`_)
