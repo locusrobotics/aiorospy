@@ -32,11 +32,11 @@ class _AsyncGoalHandle:
         """ Async generator providing feedback from the goal. The generator terminates when the goal
         is done.
         """
-        terminal_status = asyncio.create_task(self._done_event.wait())
+        terminal_status = asyncio.ensure_future(self._done_event.wait())
         try:
             while True:
                 try:
-                    new_feedback = asyncio.create_task(self._feedback_queue.async_q.get())
+                    new_feedback = asyncio.ensure_future(self._feedback_queue.async_q.get())
                     done, pending = await asyncio.wait(
                         {terminal_status, new_feedback},
                         return_when=asyncio.FIRST_COMPLETED,
@@ -250,7 +250,7 @@ class AsyncActionServer:
         """ Process incoming goals by spinning off a new asynchronous task to handle the callback.
         """
         goal_id = goal_handle.get_goal_id().id
-        task = asyncio.create_task(self._wrapper_coro(
+        task = asyncio.ensure_future(self._wrapper_coro(
             goal_id=goal_id,
             goal_handle=goal_handle,
             preempt_tasks={**self.tasks} if self.simple else {},

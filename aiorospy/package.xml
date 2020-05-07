@@ -18,7 +18,7 @@
   <exec_depend>rospy</exec_depend>
   
   <test_depend>catkin_virtualenv</test_depend>
-  <test_depend>python3.7</test_depend>
+  <test_depend>python3.6</test_depend>
   <test_depend>roslint</test_depend>
   <test_depend>rostest</test_depend>
   

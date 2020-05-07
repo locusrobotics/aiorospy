@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3.6
 import asyncio
 import sys
 import unittest
@@ -37,7 +37,7 @@ class TestActionClient(aiounittest.AsyncTestCase):
 
         server = self.create_server("test_success_result", goal_cb)
         client = AsyncActionClient(server.ns, TestAction)
-        client_task = asyncio.create_task(client.start())
+        client_task = asyncio.ensure_future(client.start())
 
         await client.wait_for_server()
         goal_handle = await client.send_goal(TestGoal(1))
@@ -65,7 +65,7 @@ class TestActionClient(aiounittest.AsyncTestCase):
 
         server = self.create_server("test_wait_for_result", goal_cb)
         client = AsyncActionClient(server.ns, TestAction)
-        client_task = asyncio.create_task(client.start())
+        client_task = asyncio.ensure_future(client.start())
 
         await client.wait_for_server()
         goal_handle = await client.send_goal(TestGoal(1))
@@ -93,7 +93,7 @@ class TestActionClient(aiounittest.AsyncTestCase):
 
         server = self.create_server("test_cancel", goal_cb, cancel_cb)
         client = AsyncActionClient(server.ns, TestAction)
-        client_task = asyncio.create_task(client.start())
+        client_task = asyncio.ensure_future(client.start())
 
         await client.wait_for_server()
         goal_handle = await client.send_goal(TestGoal())
@@ -111,7 +111,7 @@ class TestActionClient(aiounittest.AsyncTestCase):
 
         server = self.create_server("test_ensure", goal_cb, auto_start=False)
         client = AsyncActionClient(server.ns, TestAction)
-        client_task = asyncio.create_task(client.start())
+        client_task = asyncio.ensure_future(client.start())
 
         with self.assertRaises(asyncio.TimeoutError):
             await asyncio.wait_for(client.ensure_goal(TestGoal(), resend_timeout=0.1), timeout=1)
