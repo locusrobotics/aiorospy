@@ -1,1 +1,9 @@
-aiohttp==3.5.4
+aiohttp==3.6.2            # via -r /home/pbovbel/locus_dev/src/aiorospy/aiorospy_examples/requirements.in
+async-timeout==3.0.1      # via aiohttp
+attrs==19.3.0             # via aiohttp
+chardet==3.0.4            # via aiohttp
+idna-ssl==1.1.0           # via aiohttp
+idna==2.9                 # via idna-ssl, yarl
+multidict==4.7.6          # via aiohttp, yarl
+typing-extensions==3.7.4.2  # via aiohttp
+yarl==1.4.2               # via aiohttp

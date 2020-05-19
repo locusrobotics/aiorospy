@@ -8,7 +8,8 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package()
 
 catkin_generate_virtualenv(
-  PYTHON_VERSION 3.6
+  INPUT_REQUIREMENTS requirements.in
+  PYTHON_INTERPRETER python3.6
 )
 
 install(FILES requirements.txt

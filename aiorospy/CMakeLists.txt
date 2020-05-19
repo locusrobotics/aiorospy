@@ -16,7 +16,8 @@ if(CATKIN_ENABLE_TESTING)
   find_package(catkin REQUIRED COMPONENTS catkin_virtualenv roslint rostest)
 
   catkin_generate_virtualenv(
-    PYTHON_VERSION 3.6
+    INPUT_REQUIREMENTS requirements.in
+    PYTHON_INTERPRETER python3.6
   )
   set(python_test_scripts
     tests/test_action_client.py
