@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3.6
 import asyncio
 import sys
 import unittest
@@ -37,7 +37,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
 
         client = SyncActionClient("test_goal_succeeded", TestAction)
         server = AsyncActionServer(client.ns, TestAction, coro=goal_coro)
-        server_task = asyncio.create_task(server.start())
+        server_task = asyncio.ensure_future(server.start())
 
         await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
         goal_handle = client.send_goal(TestGoal(magic_value))
@@ -62,7 +62,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
 
         client = SyncActionClient("test_goal_canceled_from_client", TestAction)
         server = AsyncActionServer(client.ns, TestAction, coro=goal_coro)
-        server_task = asyncio.create_task(server.start())
+        server_task = asyncio.ensure_future(server.start())
 
         await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
         goal_handle = client.send_goal(TestGoal())
@@ -92,7 +92,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
 
         client = SyncActionClient("test_goal_canceled_from_server", TestAction)
         server = AsyncActionServer(client.ns, TestAction, coro=goal_coro)
-        server_task = asyncio.create_task(server.start())
+        server_task = asyncio.ensure_future(server.start())
 
         await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
         goal_handle = client.send_goal(TestGoal())
@@ -115,7 +115,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
 
         client = SyncActionClient("test_goal_aborted", TestAction)
         server = AsyncActionServer(client.ns, TestAction, coro=goal_coro)
-        server_task = asyncio.create_task(server.start())
+        server_task = asyncio.ensure_future(server.start())
 
         await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
         goal_handle = client.send_goal(TestGoal())
@@ -149,7 +149,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
 
         client = SyncActionClient("test_server_simple", TestAction)
         server = AsyncActionServer(client.ns, TestAction, coro=goal_coro, simple=True)
-        server_task = asyncio.create_task(server.start())
+        server_task = asyncio.ensure_future(server.start())
 
         await asyncio.get_event_loop().run_in_executor(None, client.wait_for_server)
 

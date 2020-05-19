@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3.6
 import asyncio
 import sys
 import unittest
@@ -21,13 +21,13 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
         self.client = rospy.ServiceProxy("test_service", SetBool)
 
     async def test_service_normal(self):
-        loop = asyncio.get_running_loop()
+        loop = asyncio.get_event_loop()
 
         async def callback(req):
             return SetBoolResponse(success=req.data)
 
         self.server = AsyncService("test_service", SetBool, callback, loop)
-        server_task = asyncio.create_task(self.server.start())
+        server_task = asyncio.ensure_future(self.server.start())
 
         await loop.run_in_executor(None, self.client.wait_for_service)
         response = await loop.run_in_executor(None, self.client.call, True)
@@ -37,13 +37,13 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
         await deflector_shield(server_task)
 
     async def test_service_exception(self):
-        loop = asyncio.get_running_loop()
+        loop = asyncio.get_event_loop()
 
         async def callback(req):
             raise RuntimeError()
 
         self.server = AsyncService("test_service", SetBool, callback, loop)
-        server_task = asyncio.create_task(self.server.start())
+        server_task = asyncio.ensure_future(self.server.start())
 
         await loop.run_in_executor(None, self.client.wait_for_service)
 

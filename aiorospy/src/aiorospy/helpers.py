@@ -1,6 +1,5 @@
 import asyncio
 import concurrent.futures
-import contextlib
 import functools
 import logging
 import subprocess
@@ -8,6 +7,7 @@ import time
 
 import janus
 import rospy
+from async_generator import asynccontextmanager
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ def iscoroutinefunction_or_partial(fxn):
 async def do_while(awaitable, period, do, *args, **kwargs):
     """ Convience function to periodically 'do' a callable while an awaitable is in progress. """
     if period is not None:
-        task = asyncio.create_task(awaitable)
+        task = asyncio.ensure_future(awaitable)
         while True:
             try:
                 result = await asyncio.wait_for(
@@ -161,7 +161,7 @@ async def deflector_shield(task):
         return None  # supress propagating an 'inner' cancel
 
 
-@contextlib.asynccontextmanager
+@asynccontextmanager
 async def subprocess_run(command, sudo=False, capture_output=False, terminate_timeout=5.0, *args, **kwargs):
     """ Higher level wrapper for asyncio.subprocess_exec, to run a command asynchronously.
     :param command: Command to be executed in a list. e.g. ['ls', '-l']

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3.6
 import asyncio
 import sys
 import unittest
@@ -29,7 +29,7 @@ class TestSubscriber(aiounittest.AsyncTestCase):
             for msg in to_send:
                 pub.publish(msg)
 
-        pub_task = asyncio.create_task(publish())
+        pub_task = asyncio.ensure_future(publish())
 
         received = []
 
@@ -60,7 +60,7 @@ class TestSubscriber(aiounittest.AsyncTestCase):
             for msg in to_send:
                 pub.publish(msg)
 
-        pub_task = asyncio.create_task(publish())
+        pub_task = asyncio.ensure_future(publish())
 
         received = []
 
