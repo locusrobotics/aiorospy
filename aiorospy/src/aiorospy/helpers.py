@@ -32,11 +32,11 @@ class ExceptionMonitor:
 
     def __init__(self):
         self._pending_tasks = set()
-        self._exception_q = janus.Queue()
 
     async def start(self):
         """ Monitor registered background tasks, and raise their exceptions.
         """
+        self._exception_q = janus.Queue()
         try:
             while True:
                 exc = await self._exception_q.async_q.get()
