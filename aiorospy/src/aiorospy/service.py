@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 class AsyncServiceProxy:
 
-    def __init__(self, name, service_class, loop=None):
+    def __init__(self, name, service_class):
         self.name = name
         self.service_class = service_class
-        self._loop = loop if loop is not None else asyncio.get_event_loop()
+        self._loop = asyncio.get_event_loop()
         self._srv_proxy = rospy.ServiceProxy(name, service_class)
 
     async def wait_for_service(self, log_period):
@@ -53,12 +53,12 @@ class AsyncServiceProxy:
 
 class AsyncService:
 
-    def __init__(self, name, service_class, coro, loop=None):
+    def __init__(self, name, service_class, coro):
+        self._loop = asyncio.get_event_loop()
         self.name = name
         self.service_class = service_class
-        self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._coro = coro
-        self._exception_monitor = ExceptionMonitor(loop=self._loop)
+        self._exception_monitor = ExceptionMonitor()
 
     async def start(self):
         """ Start the ROS service server """

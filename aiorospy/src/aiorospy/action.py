@@ -14,19 +14,19 @@ logger = logging.getLogger(__name__)
 
 class _AsyncGoalHandle:
 
-    def __init__(self, name, exception_monitor, loop=None):
+    def __init__(self, name, exception_monitor, loop):
         """ This class should not be user-constructed """
+        self._loop = loop
         self.status = None
         self.result = None
 
         self._name = name
-        self._loop = loop
         self._exception_monitor = exception_monitor
-        self._feedback_queue = janus.Queue(loop=loop)
+        self._feedback_queue = janus.Queue()
         self._old_statuses = set()
 
-        self._done_event = asyncio.Event(loop=self._loop)
-        self._status_cond = asyncio.Condition(loop=self._loop)
+        self._done_event = asyncio.Event()
+        self._status_cond = asyncio.Condition()
 
     async def feedback(self, log_period=None):
         """ Async generator providing feedback from the goal. The generator terminates when the goal
@@ -134,11 +134,11 @@ class _AsyncGoalHandle:
 class AsyncActionClient:
     """ Async wrapper around the action client API. """
 
-    def __init__(self, name, action_spec, loop=None):
+    def __init__(self, name, action_spec):
+        self._loop = asyncio.get_event_loop()
         self.name = name
         self.action_spec = action_spec
-        self._loop = loop if loop is not None else asyncio.get_event_loop()
-        self._exception_monitor = ExceptionMonitor(loop=self._loop)
+        self._exception_monitor = ExceptionMonitor()
         self._started_event = asyncio.Event()
 
     async def start(self):
@@ -206,17 +206,17 @@ class AsyncActionClient:
 class AsyncActionServer:
     """ Async wrapper around the action server API. """
 
-    def __init__(self, name, action_spec, coro, simple=False, loop=None):
+    def __init__(self, name, action_spec, coro, simple=False):
         """ Initialize an action server. Incoming goals will be processed via the speficied coroutine. """
         self.name = name
         self.action_spec = action_spec
         self.simple = simple
         self.tasks = {}
 
-        self._loop = loop if loop is not None else asyncio.get_event_loop()
+        self._loop = asyncio.get_event_loop()
         self._coro = coro
 
-        self._exception_monitor = ExceptionMonitor(loop=self._loop)
+        self._exception_monitor = ExceptionMonitor()
 
     async def start(self):
         """ Start the action server. """

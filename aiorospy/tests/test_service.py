@@ -26,7 +26,7 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
         async def callback(req):
             return SetBoolResponse(success=req.data)
 
-        self.server = AsyncService("test_service", SetBool, callback, loop)
+        self.server = AsyncService("test_service", SetBool, callback)
         server_task = asyncio.ensure_future(self.server.start())
 
         await loop.run_in_executor(None, self.client.wait_for_service)
@@ -42,7 +42,7 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
         async def callback(req):
             raise RuntimeError()
 
-        self.server = AsyncService("test_service", SetBool, callback, loop)
+        self.server = AsyncService("test_service", SetBool, callback)
         server_task = asyncio.ensure_future(self.server.start())
 
         await loop.run_in_executor(None, self.client.wait_for_service)

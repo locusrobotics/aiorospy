@@ -6,18 +6,15 @@ import rospy
 
 
 class AsyncSubscriber:
-    def __init__(self, name, data_class, queue_size=None, loop=None):
+    def __init__(self, name, data_class, queue_size=None):
         """ Create an asynchronous subscriber. """
         self.name = name
         self._data_class = data_class
         self._queue_size = queue_size
-        self._loop = loop if loop is not None else asyncio.get_event_loop()
 
     async def subscribe(self):
         """ Generator to pull messages from a subscription. """
-        queue = janus.Queue(
-            maxsize=self._queue_size if self._queue_size is not None else 0,
-            loop=self._loop)
+        queue = janus.Queue(maxsize=self._queue_size if self._queue_size is not None else 0)
         self._subscriber = rospy.Subscriber(
             self.name,
             self._data_class,
