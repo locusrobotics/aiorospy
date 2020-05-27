@@ -23,7 +23,7 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
         return SetBoolResponse(success=req.data)
 
     async def test_service_proxy(self):
-        client = AsyncServiceProxy("test_service", SetBool, asyncio.get_event_loop())
+        client = AsyncServiceProxy("test_service", SetBool)
         response = await client.ensure(False)
         self.assertEquals(False, response.success)
         response = await client.ensure(data=True)
