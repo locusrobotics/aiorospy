@@ -9,7 +9,7 @@ catkin_package()
 
 catkin_generate_virtualenv(
   INPUT_REQUIREMENTS requirements.in
-  PYTHON_INTERPRETER python3.6
+  PYTHON_INTERPRETER python3
 )
 
 install(FILES requirements.txt
