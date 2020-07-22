@@ -146,7 +146,7 @@ async def detect_cancel(task):
             cont.set_result(task.result())
 
     task.add_done_callback(on_done)
-    await cont
+    return await cont
 
 
 async def deflector_shield(task):
