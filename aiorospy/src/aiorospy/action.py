@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class _AsyncGoalHandle:
 
-    def __init__(self, name, exception_monitor, loop):
+    def __init__(self, name, exception_monitor, loop, feedback_queue_size):
         """ This class should not be user-constructed """
         self._loop = loop
         self.status = None
@@ -22,7 +22,7 @@ class _AsyncGoalHandle:
 
         self._name = name
         self._exception_monitor = exception_monitor
-        self._feedback_queue = janus.Queue()
+        self._feedback_queue = janus.Queue(maxsize=feedback_queue_size)
         self._old_statuses = set()
 
         self._done_event = asyncio.Event()
@@ -107,7 +107,15 @@ class _AsyncGoalHandle:
                 raise
 
     def _feedback_cb(self, goal_handle, feedback):
-        self._feedback_queue.sync_q.put(feedback)
+        while True:
+            try:
+                self._feedback_queue.sync_q.put(feedback, block=False)
+                break
+            except janus.SyncQueueFull:
+                try:
+                    self._feedback_queue.sync_q.get(block=False)
+                except janus.SyncQueueEmpty:
+                    pass
 
     async def _process_transition(self, status, comm_state, text, result):
         async with self._status_cond:
@@ -134,11 +142,12 @@ class _AsyncGoalHandle:
 class AsyncActionClient:
     """ Async wrapper around the action client API. """
 
-    def __init__(self, name, action_spec):
+    def __init__(self, name, action_spec, feedback_queue_size=10):
         self._loop = asyncio.get_event_loop()
         self.name = name
         self.action_spec = action_spec
         self._exception_monitor = ExceptionMonitor()
+        self._feedback_queue_size = feedback_queue_size
         self._started_event = asyncio.Event()
 
     async def start(self):
@@ -173,7 +182,12 @@ class AsyncActionClient:
         the client, the goal will be swallowed.
         """
         await self._started(log_period=5.0)
-        async_handle = _AsyncGoalHandle(name=self.name, exception_monitor=self._exception_monitor, loop=self._loop)
+        async_handle = _AsyncGoalHandle(
+            name=self.name,
+            exception_monitor=self._exception_monitor,
+            loop=self._loop,
+            feedback_queue_size=self._feedback_queue_size
+        )
         sync_handle = self._client.send_goal(
             goal,
             transition_cb=async_handle._transition_cb,
