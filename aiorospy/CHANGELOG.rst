@@ -2,8 +2,8 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.0 (2020-10-02)
+------------------
 * Missing return (`#33 <https://github.com/locusrobotics/aiorospy/issues/33>`_)
 * Don't instantiate queue outside of coroutine (`#32 <https://github.com/locusrobotics/aiorospy/issues/32>`_)
 * Don't take or passthrough loop arguments unnecessarily (`#31 <https://github.com/locusrobotics/aiorospy/issues/31>`_)

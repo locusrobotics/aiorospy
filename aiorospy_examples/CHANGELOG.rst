@@ -2,8 +2,8 @@
 Changelog for package aiorospy_examples
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.0 (2020-10-02)
+------------------
 * Lock requirements
 * python3.6 support (`#29 <https://github.com/locusrobotics/aiorospy/issues/29>`_)
 * Implement simple action server (`#26 <https://github.com/locusrobotics/aiorospy/issues/26>`_)
