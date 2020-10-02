@@ -2,6 +2,15 @@
 Changelog for package aiorospy_examples
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Lock requirements
+* python3.6 support (`#29 <https://github.com/locusrobotics/aiorospy/issues/29>`_)
+* Implement simple action server (`#26 <https://github.com/locusrobotics/aiorospy/issues/26>`_)
+  Implement proper simple action server, and fix a bunch of flaky tests.
+* Remove locus_msgs
+* Contributors: Paul Bovbel, betaboon
+
 0.1.0 (2019-07-12)
 ------------------
 * Cleanup (`#18 <https://github.com/locusrobotics/aiorospy/issues/18>`_)

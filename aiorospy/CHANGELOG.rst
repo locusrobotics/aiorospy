@@ -2,6 +2,25 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Missing return (`#33 <https://github.com/locusrobotics/aiorospy/issues/33>`_)
+* Don't instantiate queue outside of coroutine (`#32 <https://github.com/locusrobotics/aiorospy/issues/32>`_)
+* Don't take or passthrough loop arguments unnecessarily (`#31 <https://github.com/locusrobotics/aiorospy/issues/31>`_)
+* Lock requirements
+* python3.6 support (`#29 <https://github.com/locusrobotics/aiorospy/issues/29>`_)
+* Make subprocess a context manager to ensure shutdown; expose timing vars from timer (`#28 <https://github.com/locusrobotics/aiorospy/issues/28>`_)
+* Add Timer and subprocess helpers (`#27 <https://github.com/locusrobotics/aiorospy/issues/27>`_)
+  * Add Timer and subprocess helpers
+  * Fix comments
+* Implement simple action server (`#26 <https://github.com/locusrobotics/aiorospy/issues/26>`_)
+  Implement proper simple action server, and fix a bunch of flaky tests.
+* run_in_executor doesn't take kwargs (`#25 <https://github.com/locusrobotics/aiorospy/issues/25>`_)
+* Update to aiostream 0.3.3 (`#21 <https://github.com/locusrobotics/aiorospy/issues/21>`_)
+  fixes a bug during installation in some environments, see https://github.com/vxgmichel/aiostream/pull/42
+* Fix exception monitor handling of concurrent.futures.CancelledError (`#20 <https://github.com/locusrobotics/aiorospy/issues/20>`_)
+* Contributors: Andreas Bresser, Paul Bovbel, betaboon
+
 0.1.0 (2019-07-12)
 ------------------
 * Cleanup (`#18 <https://github.com/locusrobotics/aiorospy/issues/18>`_)
