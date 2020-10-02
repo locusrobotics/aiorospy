@@ -2,8 +2,8 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.1 (2020-10-02)
+------------------
 * Limit the size of the action feedback queue by default (`#35 <https://github.com/locusrobotics/aiorospy/issues/35>`_)
   (cherry picked from commit 4f03362c3fef5190720f30bd37932f0ba812cb0a)
 * Contributors: Alex Bencz
