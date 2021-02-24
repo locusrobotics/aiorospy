@@ -2,6 +2,9 @@
 Changelog for package aiorospy_examples
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.2.1 (2020-10-02)
 ------------------
 

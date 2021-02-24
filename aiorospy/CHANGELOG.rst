@@ -2,6 +2,12 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* ServiceProxy is not threadsafe (`#36 <https://github.com/locusrobotics/aiorospy/issues/36>`_)
+  (cherry picked from commit 07ea3f96dfeddce03dc0efbd75f1748c0e6eef4d)
+* Contributors: Paul Bovbel
+
 0.2.1 (2020-10-02)
 ------------------
 * Limit the size of the action feedback queue by default (`#35 <https://github.com/locusrobotics/aiorospy/issues/35>`_)
