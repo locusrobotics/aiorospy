@@ -2,8 +2,8 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.2 (2021-02-24)
+------------------
 * ServiceProxy is not threadsafe (`#36 <https://github.com/locusrobotics/aiorospy/issues/36>`_)
   (cherry picked from commit 07ea3f96dfeddce03dc0efbd75f1748c0e6eef4d)
 * Contributors: Paul Bovbel

@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <package format="2">
   <name>aiorospy_examples</name>
-  <version>0.2.1</version>
+  <version>0.2.2</version>
   <description>Example scripts using aiorospy.</description>
   
   <author email="ablakey@locusrobotics.com">Andrew Blakey</author>
