@@ -17,6 +17,7 @@ class AsyncServiceProxy:
         self.name = name
         self.service_class = service_class
         self._loop = asyncio.get_event_loop()
+        self._lock = asyncio.Lock()
         self._srv_proxy = rospy.ServiceProxy(name, service_class)
 
     async def wait_for_service(self, log_period):
@@ -35,8 +36,11 @@ class AsyncServiceProxy:
         """ Send a request to a ROS service. """
         log_period = kwargs.pop('log_period', None)
         service_call = functools.partial(self._srv_proxy.call, *args, **kwargs)
-        return await log_during(self._loop.run_in_executor(None, service_call),
-                                f"Trying to call service {self.name}...", log_period)
+        # Non-persistent ServiceProxy is not thread safe
+        # https://github.com/ros/ros_comm/blob/noetic-devel/clients/rospy/src/rospy/impl/tcpros_service.py#L534
+        async with self._lock:
+            return await log_during(self._loop.run_in_executor(None, service_call),
+                                    f"Trying to call service {self.name}...", log_period)
 
     async def ensure(self, *args, **kwargs):
         """ Send a request to a ROS service, retrying if comms failure is detected. """
