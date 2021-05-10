@@ -2,6 +2,14 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Wait for a service longer (`#37 <https://github.com/locusrobotics/aiorospy/issues/37>`_)
+  * Don't wait for service in ensure
+  * Don't pre-empt wait_for_service as often
+  (cherry picked from commit 647645bb396d85fb8e8a25102980200686c4e167)
+* Contributors: Paul Bovbel
+
 0.2.2 (2021-02-24)
 ------------------
 * ServiceProxy is not threadsafe (`#36 <https://github.com/locusrobotics/aiorospy/issues/36>`_)
