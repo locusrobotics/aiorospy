@@ -2,8 +2,8 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.3 (2021-05-10)
+------------------
 * Wait for a service longer (`#37 <https://github.com/locusrobotics/aiorospy/issues/37>`_)
   * Don't wait for service in ensure
   * Don't pre-empt wait_for_service as often
