@@ -46,7 +46,7 @@ class AsyncServiceProxy:
         """ Send a request to a ROS service, retrying if comms failure is detected. """
         log_period = kwargs.pop('log_period', None)
         while True:
-            await self.wait_for_service(log_period)
+            # await self.wait_for_service(log_period)
             try:
                 return await self.send(*args, **kwargs)
             except (rospy.ServiceException, AttributeError, rospy.exceptions.ROSException,
