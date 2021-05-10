@@ -27,8 +27,9 @@ class AsyncServiceProxy:
     async def _wait_for_service(self):
         while True:
             try:
-                # Use a small timeout so the execution can be cancelled if necessary
-                return await self._loop.run_in_executor(None, self._srv_proxy.wait_for_service, 0.1)
+                # ~Use a small timeout so the execution can be cancelled if necessary~
+                # Use a large timeout, otherwise wait_for_service will never succeed in bad networking environments.
+                return await self._loop.run_in_executor(None, self._srv_proxy.wait_for_service, 10.0)
             except rospy.ROSException:
                 continue
 
