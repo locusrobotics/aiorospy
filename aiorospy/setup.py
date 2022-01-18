@@ -4,7 +4,7 @@ from setuptools import setup
 from catkin_pkg.python_setup import generate_distutils_setup
 import sys
 
-if sys.version_info < (3,5):
+if sys.version_info < (3, 5):
     sys.exit('Sorry, Python < 3.5 is not supported')
 
 setup_args = generate_distutils_setup(
