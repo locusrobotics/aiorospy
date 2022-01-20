@@ -3,30 +3,30 @@
   <name>aiorospy_examples</name>
   <version>0.2.0</version>
   <description>Example scripts using aiorospy.</description>
-  
+
   <author email="ablakey@locusrobotics.com">Andrew Blakey</author>
   <author email="pbovbel@locusrobotics.com">Paul Bovbel</author>
-  
+
   <maintainer email="ablakey@locusrobotics.com">Andrew Blakey</maintainer>
   <maintainer email="pbovbel@locusrobotics.com">Paul Bovbel</maintainer>
   <license>MIT</license>
-  
+
   <buildtool_depend>catkin</buildtool_depend>
-  
+
   <build_depend>catkin_virtualenv</build_depend>
-  
-  <depend>python3.6</depend>
-  
+
+  <depend>python3</depend>
+
   <depend>aiorospy</depend>
-  
+
   <exec_depend>rospy_tutorials</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
-  
+
   <test_depend>roslint</test_depend>
-  
+
   <export>
     <pip_requirements>requirements.txt</pip_requirements>
   </export>
-  
+
 </package>

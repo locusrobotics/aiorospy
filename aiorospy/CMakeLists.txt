@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.0.2)
 project(aiorospy)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -17,7 +17,7 @@ if(CATKIN_ENABLE_TESTING)
 
   catkin_generate_virtualenv(
     INPUT_REQUIREMENTS requirements.in
-    PYTHON_INTERPRETER python3.6
+    PYTHON_INTERPRETER python3
   )
   set(python_test_scripts
     tests/test_action_client.py

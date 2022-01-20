@@ -3,27 +3,28 @@
   <name>aiorospy</name>
   <version>0.2.0</version>
   <description>Asyncio wrapper around rospy I/O interfaces.</description>
-  
+
   <author email="ablakey@locusrobotics.com">Andrew Blakey</author>
   <author email="pbovbel@locusrobotics.com">Paul Bovbel</author>
-  
+
   <maintainer email="ablakey@locusrobotics.com">Andrew Blakey</maintainer>
   <maintainer email="pbovbel@locusrobotics.com">Paul Bovbel</maintainer>
-  
+
   <license>MIT</license>
-  
+
   <buildtool_depend>catkin</buildtool_depend>
-  
+  <buildtool_depend>python3-setuptools</buildtool_depend>
+
   <exec_depend>actionlib</exec_depend>
   <exec_depend>rospy</exec_depend>
-  
+
   <test_depend>catkin_virtualenv</test_depend>
-  <test_depend>python3.6</test_depend>
+  <test_depend>python3</test_depend>
   <test_depend>roslint</test_depend>
   <test_depend>rostest</test_depend>
-  
+
   <export>
     <pip_requirements>requirements.txt</pip_requirements>
   </export>
-  
+
 </package>
