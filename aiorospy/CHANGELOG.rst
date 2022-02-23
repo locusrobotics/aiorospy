@@ -2,8 +2,8 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.3.0 (2022-02-23)
+------------------
 * Prepare for noetic release with python3 (#39)
   * replace python_interpreter 3.6 with 3
   * Check python version with setuptools
