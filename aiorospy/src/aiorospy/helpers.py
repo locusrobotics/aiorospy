@@ -242,3 +242,18 @@ class Timer:
 
     async def __aexit__(self, exc_type, exc, tb):
         self.last = self.now
+
+
+class ExponentialSleep:
+    def __init__(self, min_period, max_period):
+        self._min_period = min_period
+        self._max_period = max_period
+        self._n = 0
+
+    @property
+    def next_sleep_time(self):
+        return min(self._max_period, (2 ** self._n) * self._min_period)
+
+    async def __call__(self):
+        await asyncio.sleep(self.next_sleep_time)
+        self._n += 1
