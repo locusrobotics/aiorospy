@@ -2,6 +2,12 @@
 Changelog for package aiorospy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Add exponential delay when retrying service after exception (`#40 <https://github.com/locusrobotics/aiorospy/issues/40>`_)
+  (cherry picked from commit 0c93c3b659566d60808a26e5d24fdec12c030d2b)
+* Contributors: Alex Bencz
+
 0.3.0 (2022-02-23)
 ------------------
 * Prepare for noetic release with python3 (#39)

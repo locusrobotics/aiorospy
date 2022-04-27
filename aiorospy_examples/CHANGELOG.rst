@@ -2,6 +2,9 @@
 Changelog for package aiorospy_examples
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.3.0 (2022-02-23)
 ------------------
 * Prepare for noetic release with python3 (#39)
