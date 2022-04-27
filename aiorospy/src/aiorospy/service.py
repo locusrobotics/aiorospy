@@ -6,7 +6,7 @@ import sys
 
 import rospy
 
-from .helpers import ExceptionMonitor, log_during
+from .helpers import ExceptionMonitor, ExponentialSleep, log_during
 
 logger = logging.getLogger(__name__)
 
@@ -46,13 +46,17 @@ class AsyncServiceProxy:
     async def ensure(self, *args, **kwargs):
         """ Send a request to a ROS service, retrying if comms failure is detected. """
         log_period = kwargs.pop('log_period', None)
+        max_retry_delay = kwargs.pop('max_retry_delay', 30)
+        sleep = ExponentialSleep(1, max_retry_delay)
+
         while True:
             await self.wait_for_service(log_period)
             try:
                 return await self.send(*args, **kwargs)
             except (rospy.ServiceException, AttributeError, rospy.exceptions.ROSException,
                     rospy.exceptions.ROSInternalException) as e:
-                logger.exception(f"Caught exception {e}, retrying service call...")
+                logger.exception(f"Caught exception {e}, retrying service call after {sleep.next_sleep_time}s...")
+                await sleep()
                 continue
 
 
