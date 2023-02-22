@@ -12,6 +12,18 @@ Changelog for package aiorospy_examples
   Co-authored-by: Paul Bovbel <paul@bovbel.com>
 * Contributors: Doug Smith
 
+Forthcoming
+-----------
+* 0.3.0
+* Update changelogs
+* Prepare for noetic release with python3 (#39)
+  * replace python_interpreter 3.6 with 3
+  * Check python version with setuptools
+  * Fix lint
+  Co-authored-by: betaboon <betaboon@0x80.ninja>
+  Co-authored-by: Paul Bovbel <paul@bovbel.com>
+* Contributors: Doug Smith, Gary Servin
+
 0.2.0 (2020-10-02)
 ------------------
 * Lock requirements
