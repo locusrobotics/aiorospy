@@ -17,8 +17,8 @@ Changelog for package aiorospy
 * Limit the size of the action feedback queue by default (#35)
 * Contributors: Doug Smith, Paul Bovbel, abencz
 
-Forthcoming
------------
+0.4.0 (2023-02-22)
+------------------
 * 0.3.0
 * Update changelogs
 * Add exponential delay when retrying service after exception (#40)

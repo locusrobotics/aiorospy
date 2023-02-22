@@ -12,8 +12,8 @@ Changelog for package aiorospy_examples
   Co-authored-by: Paul Bovbel <paul@bovbel.com>
 * Contributors: Doug Smith
 
-Forthcoming
------------
+0.4.0 (2023-02-22)
+------------------
 * 0.3.0
 * Update changelogs
 * Prepare for noetic release with python3 (#39)
