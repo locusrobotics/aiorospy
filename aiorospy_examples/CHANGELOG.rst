@@ -24,8 +24,8 @@ Changelog for package aiorospy_examples
   Co-authored-by: Paul Bovbel <paul@bovbel.com>
 * Contributors: Doug Smith, Gary Servin
 
-Forthcoming
------------
+0.5.0 (2023-09-25)
+------------------
 * 0.4.0
 * Update changelogs
 * 0.3.0
