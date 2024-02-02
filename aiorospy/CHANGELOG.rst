@@ -55,6 +55,28 @@ Changelog for package aiorospy
 * Limit the size of the action feedback queue by default (#35)
 * Contributors: Alex Bencz, Doug Smith, Gary Servin, Paul Bovbel, abencz
 
+Forthcoming
+-----------
+* 0.5.0
+* Update changelogs
+* 0.4.0
+* Update changelogs
+* 0.3.0
+* Update changelogs
+* Add exponential delay when retrying service after exception (#40)
+* Prepare for noetic release with python3 (#39)
+  * replace python_interpreter 3.6 with 3
+  * Check python version with setuptools
+  * Fix lint
+  Co-authored-by: betaboon <betaboon@0x80.ninja>
+  Co-authored-by: Paul Bovbel <paul@bovbel.com>
+* Wait for a service longer (#37)
+  * Don't wait for service in ensure
+  * Don't pre-empt wait_for_service as often
+* ServiceProxy is not threadsafe (#36)
+* Limit the size of the action feedback queue by default (#35)
+* Contributors: Alex Bencz, Doug Smith, Gary Servin, Paul Bovbel, abencz
+
 0.2.0 (2020-10-02)
 ------------------
 * Missing return (`#33 <https://github.com/locusrobotics/aiorospy/issues/33>`_)
