@@ -17,7 +17,7 @@ if(CATKIN_ENABLE_TESTING)
 
   catkin_generate_virtualenv(
     INPUT_REQUIREMENTS requirements.in
-    PYTHON_INTERPRETER python3
+    PYTHON_INTERPRETER python3.11
   )
   set(python_test_scripts
     tests/test_action_client.py
