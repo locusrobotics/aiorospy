@@ -40,8 +40,13 @@ class AsyncServiceProxy:
         # Non-persistent ServiceProxy is not thread safe
         # https://github.com/ros/ros_comm/blob/noetic-devel/clients/rospy/src/rospy/impl/tcpros_service.py#L534
         async with self._lock:
-            return await log_during(self._loop.run_in_executor(None, service_call),
-                                    f"Trying to call service {self.name}...", log_period)
+            try:
+                return await log_during(self._loop.run_in_executor(None, service_call),
+                                        f"Trying to call service {self.name}...", log_period)
+            except rospy.exceptions.TransportTerminated:
+                # service proxy transport was disconnected and needs to be re-created
+                self._srv_proxy = rospy.ServiceProxy(self.name, self.service_class)
+                raise
 
     async def ensure(self, *args, **kwargs):
         """ Send a request to a ROS service, retrying if comms failure is detected. """
@@ -53,10 +58,15 @@ class AsyncServiceProxy:
             await self.wait_for_service(log_period)
             try:
                 return await self.send(*args, **kwargs)
-            except (rospy.ServiceException, AttributeError, rospy.exceptions.ROSException,
-                    rospy.exceptions.ROSInternalException) as e:
+            except (rospy.ServiceException, rospy.exceptions.ROSException, rospy.exceptions.ROSInternalException) as e:
                 logger.exception(f"Caught exception {e}, retrying service call after {sleep.next_sleep_time}s...")
                 await sleep()
+                continue
+            except AttributeError as e:
+                logger.exception(f"Caught AttributeError {e}, recreating service proxy "
+                                 f"and retrying service call after {sleep.next_sleep_time}s...")
+                await sleep()
+                self._srv_proxy = rospy.ServiceProxy(self.name, self.service_class)
                 continue
 
 
