@@ -55,8 +55,8 @@ Changelog for package aiorospy
 * Limit the size of the action feedback queue by default (#35)
 * Contributors: Alex Bencz, Doug Smith, Gary Servin, Paul Bovbel, abencz
 
-Forthcoming
------------
+0.7.1 (2024-07-25)
+------------------
 
 0.7.0 (2024-06-17)
 ------------------
