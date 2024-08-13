@@ -9,7 +9,7 @@ import sys
 import janus
 import rospy
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 9):
     from contextlib import asynccontextmanager
 else:
     from async_generator import asynccontextmanager
