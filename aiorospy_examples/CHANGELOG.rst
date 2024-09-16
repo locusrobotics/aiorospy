@@ -38,8 +38,8 @@ Changelog for package aiorospy_examples
   Co-authored-by: Paul Bovbel <paul@bovbel.com>
 * Contributors: Doug Smith, Gary Servin
 
-Forthcoming
------------
+0.8.0 (2024-09-16)
+------------------
 
 0.7.0 (2024-06-17)
 ------------------
