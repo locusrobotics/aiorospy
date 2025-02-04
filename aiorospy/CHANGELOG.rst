@@ -55,6 +55,9 @@ Changelog for package aiorospy
 * Limit the size of the action feedback queue by default (#35)
 * Contributors: Alex Bencz, Doug Smith, Gary Servin, Paul Bovbel, abencz
 
+Forthcoming
+-----------
+
 0.8.0 (2024-09-16)
 ------------------
 * Don't use async_generator for python3.9+ (#47)
