@@ -6,6 +6,6 @@ attrs==25.1.0             # via aiohttp
 frozenlist==1.5.0         # via aiohttp, aiosignal
 idna==3.10                # via yarl
 multidict==6.1.0          # via aiohttp, yarl
-propcache==0.2.1          # via aiohttp, yarl
+propcache==0.3.0          # via aiohttp, yarl
 typing-extensions==4.12.2  # via multidict
 yarl==1.18.3              # via aiohttp
