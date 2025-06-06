@@ -55,6 +55,16 @@ Changelog for package aiorospy
 * Limit the size of the action feedback queue by default (#35)
 * Contributors: Alex Bencz, Doug Smith, Gary Servin, Paul Bovbel, abencz
 
+Forthcoming
+-----------
+* Update packages dependencies to build on Noble (#48)
+  * Update dependencies
+  * Update cmake minimum version
+  * Update dependecies
+  * Update github actions
+  * Match versions to the lowest common version
+* Contributors: Gary Servin
+
 0.9.0 (2025-02-04)
 ------------------
 
