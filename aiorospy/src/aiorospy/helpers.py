@@ -75,7 +75,7 @@ class ExceptionMonitor:
 
     def _task_done_callback(self, task):
         """ When a task monitored by this ExceptionMonitor finishes, we want to check if there are any uncaught
-        exceptions. Cancellations are normal and should be supressed, but everything else should be passed up to
+        exceptions. Cancellations are normal and should be suppressed, but everything else should be passed up to
         the monitor queue. """
         try:
             self._pending_tasks.remove(task)
@@ -161,7 +161,7 @@ async def deflector_shield(task):
     try:
         return await detect_cancel(asyncio.shield(task))
     except ChildCancelled:
-        return None  # supress propagating an 'inner' cancel
+        return None  # suppress propagating an 'inner' cancel
 
 
 @asynccontextmanager

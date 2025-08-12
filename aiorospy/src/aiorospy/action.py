@@ -221,7 +221,7 @@ class AsyncActionServer:
     """ Async wrapper around the action server API. """
 
     def __init__(self, name, action_spec, coro, simple=False):
-        """ Initialize an action server. Incoming goals will be processed via the speficied coroutine. """
+        """ Initialize an action server. Incoming goals will be processed via the specified coroutine. """
         self.name = name
         self.action_spec = action_spec
         self.simple = simple
