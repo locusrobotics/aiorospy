@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-import asyncio
 import sys
-import unittest
 
 import aiounittest
 import rospy
 import rostest
 from aiorospy import AsyncServiceProxy
-from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
+from std_srvs.srv import SetBool, SetBoolResponse
 
 
 class TestServiceProxy(aiounittest.AsyncTestCase):
