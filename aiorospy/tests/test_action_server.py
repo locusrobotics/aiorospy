@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
 import sys
-import unittest
 
 import aiounittest
 import janus
@@ -133,7 +132,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
             delay = goal_handle.get_goal().goal
             try:
                 if event.is_set():
-                    raise RuntimeError(f"Event wasn't cleared by another goal, bail!")
+                    raise RuntimeError("Event wasn't cleared by another goal, bail!")
                 event.set()
                 goal_handle.set_accepted()
 

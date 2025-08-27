@@ -7,7 +7,6 @@ import rospy
 from actionlib import ActionClient, ActionServer, CommState, GoalStatus
 
 from .helpers import ExceptionMonitor, deflector_shield, log_during
-from .topic import AsyncSubscriber
 
 logger = logging.getLogger(__name__)
 
@@ -221,7 +220,7 @@ class AsyncActionServer:
     """ Async wrapper around the action server API. """
 
     def __init__(self, name, action_spec, coro, simple=False):
-        """ Initialize an action server. Incoming goals will be processed via the speficied coroutine. """
+        """ Initialize an action server. Incoming goals will be processed via the specified coroutine. """
         self.name = name
         self.action_spec = action_spec
         self.simple = simple
@@ -332,7 +331,7 @@ class AsyncActionServer:
                     goal_handle.set_aborted(result=None, text=f"{aborted_message}, {reason}")
 
             else:
-                reason = f"never completed server-side"
+                reason = "never completed server-side"
                 if status in self.PENDING_STATUS:
                     goal_handle.set_rejected(result=None, text=f"{rejected_message}, {reason}")
                     logger.warning(f"{rejected_message}, {reason}")

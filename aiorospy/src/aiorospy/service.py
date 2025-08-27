@@ -2,7 +2,6 @@
 import asyncio
 import functools
 import logging
-import sys
 
 import rospy
 

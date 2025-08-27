@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
 import sys
-import unittest
 from threading import Event
 
 import aiounittest
