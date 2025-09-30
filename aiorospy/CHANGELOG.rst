@@ -55,6 +55,12 @@ Changelog for package aiorospy
 * Limit the size of the action feedback queue by default (#35)
 * Contributors: Alex Bencz, Doug Smith, Gary Servin, Paul Bovbel, abencz
 
+Forthcoming
+-----------
+* chore: apply centralized pre-commit fixes (#49)
+  * Fix flake8 errors
+* Contributors: Bianca Bendris
+
 0.10.0 (2025-06-06)
 -------------------
 * Update packages dependencies to build on Noble (#48)
