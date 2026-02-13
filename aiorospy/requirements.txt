@@ -1,5 +1,4 @@
-aiounittest==1.4.3        # via -r requirements.in
+aiounittest==1.5.0        # via -r requirements.in
 async-generator==1.10     # via -r requirements.in
-janus==1.0.0              # via -r requirements.in
-typing-extensions==4.12.2  # via janus
-wrapt==1.17.2             # via aiounittest
+janus==2.0.0              # via -r requirements.in
+wrapt==2.1.1              # via -r requirements.in, aiounittest
