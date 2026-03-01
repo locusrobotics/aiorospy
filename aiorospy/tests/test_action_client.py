@@ -11,6 +11,9 @@ from actionlib.msg import TestAction, TestFeedback, TestGoal, TestResult
 from aiorospy import AsyncActionClient
 from aiorospy.helpers import deflector_shield
 
+WAIT_TIMEOUT = 5.0
+MAX_RETRIES = 3
+
 
 class TestActionClient(aiounittest.AsyncTestCase):
 
@@ -23,6 +26,21 @@ class TestActionClient(aiounittest.AsyncTestCase):
         if auto_start:
             action_server.start()
         return action_server
+
+    async def retry_on_timeout(self, fn):
+        """Retry an async callable up to MAX_RETRIES times on TimeoutError.
+
+        Under heavy CPU load the ROS spinner thread can be starved,
+        causing goal delivery or status propagation to exceed
+        WAIT_TIMEOUT.  Retrying the send+wait cycle handles this
+        transient condition without masking real failures.
+        """
+        for attempt in range(MAX_RETRIES):
+            try:
+                return await fn()
+            except asyncio.TimeoutError:
+                if attempt == MAX_RETRIES - 1:
+                    raise
 
     async def test_success_result(self):
         expected_result = TestResult(0)
@@ -39,15 +57,21 @@ class TestActionClient(aiounittest.AsyncTestCase):
         client_task = asyncio.ensure_future(client.start())
 
         await client.wait_for_server()
-        goal_handle = await client.send_goal(TestGoal(1))
 
-        idx = 0
-        async for feedback in goal_handle.feedback(log_period=1.0):
-            print(f"feedback {idx}")
-            self.assertEqual(feedback, TestFeedback(idx))
-            idx += 1
+        async def send_and_wait():
+            gh = await client.send_goal(TestGoal(1))
+            idx = 0
+            async for feedback in gh.feedback(log_period=1.0):
+                self.assertEqual(feedback, TestFeedback(idx))
+                idx += 1
+            await gh.wait()
+            return gh
 
-        await goal_handle.wait()
+        async def attempt():
+            return await asyncio.wait_for(send_and_wait(), timeout=WAIT_TIMEOUT)
+
+        goal_handle = await self.retry_on_timeout(attempt)
+
         self.assertEqual(goal_handle.status, GoalStatus.SUCCEEDED)
         self.assertEqual(expected_result, goal_handle.result)
 
@@ -67,18 +91,31 @@ class TestActionClient(aiounittest.AsyncTestCase):
         client_task = asyncio.ensure_future(client.start())
 
         await client.wait_for_server()
-        goal_handle = await client.send_goal(TestGoal(1))
-        await goal_handle.reach_status(GoalStatus.ACTIVE, log_period=1.0)
+
+        async def send_and_reach_active():
+            gh = await client.send_goal(TestGoal(1))
+            await asyncio.wait_for(
+                gh.reach_status(GoalStatus.ACTIVE, log_period=1.0),
+                timeout=WAIT_TIMEOUT)
+            return gh
+
+        goal_handle = await self.retry_on_timeout(send_and_reach_active)
 
         received_accepted.set()
 
         with self.assertRaises(RuntimeError):
-            await goal_handle.reach_status(GoalStatus.REJECTED, log_period=1.0)
+            await asyncio.wait_for(
+                goal_handle.reach_status(GoalStatus.REJECTED, log_period=1.0),
+                timeout=WAIT_TIMEOUT)
 
-        await goal_handle.reach_status(GoalStatus.SUCCEEDED, log_period=1.0)
+        await asyncio.wait_for(
+            goal_handle.reach_status(GoalStatus.SUCCEEDED, log_period=1.0),
+            timeout=WAIT_TIMEOUT)
 
         with self.assertRaises(RuntimeError):
-            await goal_handle.reach_status(GoalStatus.REJECTED, log_period=1.0)
+            await asyncio.wait_for(
+                goal_handle.reach_status(GoalStatus.REJECTED, log_period=1.0),
+                timeout=WAIT_TIMEOUT)
 
         client_task.cancel()
         await deflector_shield(client_task)
@@ -95,11 +132,20 @@ class TestActionClient(aiounittest.AsyncTestCase):
         client_task = asyncio.ensure_future(client.start())
 
         await client.wait_for_server()
-        goal_handle = await client.send_goal(TestGoal())
-        await goal_handle.reach_status(GoalStatus.ACTIVE, log_period=1.0)
+
+        async def send_and_reach_active():
+            gh = await client.send_goal(TestGoal())
+            await asyncio.wait_for(
+                gh.reach_status(GoalStatus.ACTIVE, log_period=1.0),
+                timeout=WAIT_TIMEOUT)
+            return gh
+
+        goal_handle = await self.retry_on_timeout(send_and_reach_active)
 
         goal_handle.cancel()
-        await goal_handle.reach_status(GoalStatus.PREEMPTED, log_period=1.0)
+        await asyncio.wait_for(
+            goal_handle.reach_status(GoalStatus.PREEMPTED, log_period=1.0),
+            timeout=WAIT_TIMEOUT)
 
         client_task.cancel()
         await deflector_shield(client_task)
@@ -118,7 +164,9 @@ class TestActionClient(aiounittest.AsyncTestCase):
         server.start()
 
         goal_handle = await client.ensure_goal(TestGoal(), resend_timeout=0.1)
-        await goal_handle.reach_status(GoalStatus.ACTIVE, log_period=1.0)
+        await asyncio.wait_for(
+            goal_handle.reach_status(GoalStatus.ACTIVE, log_period=1.0),
+            timeout=WAIT_TIMEOUT)
 
         client_task.cancel()
         await deflector_shield(client_task)
