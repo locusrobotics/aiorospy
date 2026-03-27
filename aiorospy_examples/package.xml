@@ -15,8 +15,6 @@
 
   <build_depend>catkin_virtualenv</build_depend>
 
-  <depend>python3</depend>
-
   <depend>aiorospy</depend>
 
   <exec_depend>rospy_tutorials</exec_depend>

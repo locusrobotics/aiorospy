@@ -1,0 +1,4 @@
+aiounittest==1.5.0        # via -r requirements.in
+async-generator==1.10     # via -r requirements.in
+janus==2.0.0              # via -r requirements.in
+wrapt==2.1.1              # via -r requirements.in, aiounittest
