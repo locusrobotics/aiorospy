@@ -202,7 +202,7 @@ async def subprocess_end(process, terminate_timeout=5.0):
         try:
             await asyncio.wait_for(process.wait(), timeout=terminate_timeout)
         except asyncio.TimeoutError:
-            logger.warn(f"Process did not terminate, escalating to kill: {command}")
+            logger.warn(f"Process did not terminate, escalating to kill: {process}")
             process.kill()
             await process.wait()
 

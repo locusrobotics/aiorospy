@@ -3,6 +3,7 @@ project(aiorospy_examples)
 
 find_package(catkin REQUIRED COMPONENTS
   catkin_virtualenv
+  aiorospy
 )
 
 catkin_package()

@@ -93,7 +93,7 @@ class _AsyncGoalHandle:
 
     def _transition_cb(self, goal_handle):
         try:
-            future = asyncio.run_coroutine_threadsafe(self._process_transition(
+            _ = asyncio.run_coroutine_threadsafe(self._process_transition(
                 # We must use these accessors here instead of passing through goal_handle to avoid hitting deadlock
                 status=goal_handle.get_goal_status(),
                 comm_state=goal_handle.get_comm_state(),
