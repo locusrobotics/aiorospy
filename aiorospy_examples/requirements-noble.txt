@@ -1,0 +1,11 @@
+aiohappyeyeballs==2.6.1   # via aiohttp
+aiohttp==3.13.5           # via -r requirements.in
+aiosignal==1.4.0          # via aiohttp
+async-timeout==5.0.1      # via aiohttp
+attrs==26.1.0             # via aiohttp
+frozenlist==1.8.0         # via aiohttp, aiosignal
+idna==3.11                # via yarl
+multidict==6.7.1          # via aiohttp, yarl
+propcache==0.4.1          # via aiohttp, yarl
+typing-extensions==4.15.0  # via aiosignal, multidict
+yarl==1.23.0              # via aiohttp

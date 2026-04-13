@@ -71,7 +71,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
         goal_handle.cancel()
 
         await self.wait_for_status(goal_handle, GoalStatus.PREEMPTED)
-        self.assertEquals(goal_handle.get_goal_status(), GoalStatus.PREEMPTED)
+        self.assertEqual(goal_handle.get_goal_status(), GoalStatus.PREEMPTED)
 
         server_task.cancel()
         await deflector_shield(server_task)
@@ -102,7 +102,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
         await server.cancel(server_goal_handle)
 
         await self.wait_for_status(goal_handle, GoalStatus.PREEMPTED)
-        self.assertEquals(goal_handle.get_goal_status(), GoalStatus.PREEMPTED)
+        self.assertEqual(goal_handle.get_goal_status(), GoalStatus.PREEMPTED)
 
         server_task.cancel()
         await deflector_shield(server_task)
@@ -120,7 +120,7 @@ class TestActionServer(aiounittest.AsyncTestCase):
         goal_handle = client.send_goal(TestGoal())
 
         await self.wait_for_status(goal_handle, GoalStatus.ABORTED)
-        self.assertEquals(goal_handle.get_goal_status(), GoalStatus.ABORTED)
+        self.assertEqual(goal_handle.get_goal_status(), GoalStatus.ABORTED)
 
         with self.assertRaises(RuntimeError):
             await deflector_shield(server_task)

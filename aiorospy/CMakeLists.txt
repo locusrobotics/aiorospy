@@ -9,7 +9,8 @@ catkin_package()
 
 catkin_python_setup()
 
-install(FILES requirements.txt
+file(GLOB REQUIREMENTS_FILES "requirements*.txt")
+install(FILES ${REQUIREMENTS_FILES}
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 if(CATKIN_ENABLE_TESTING)
@@ -17,7 +18,6 @@ if(CATKIN_ENABLE_TESTING)
 
   catkin_generate_virtualenv(
     INPUT_REQUIREMENTS requirements.in
-    PYTHON_INTERPRETER python3
   )
   set(python_test_scripts
     tests/test_action_client.py

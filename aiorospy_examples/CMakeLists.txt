@@ -3,16 +3,17 @@ project(aiorospy_examples)
 
 find_package(catkin REQUIRED COMPONENTS
   catkin_virtualenv
+  aiorospy
 )
 
 catkin_package()
 
 catkin_generate_virtualenv(
   INPUT_REQUIREMENTS requirements.in
-  PYTHON_INTERPRETER python3
 )
 
-install(FILES requirements.txt
+file(GLOB REQUIREMENTS_FILES "requirements*.txt")
+install(FILES ${REQUIREMENTS_FILES}
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 set(python_scripts
