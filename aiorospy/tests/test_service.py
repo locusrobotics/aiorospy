@@ -30,7 +30,7 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
 
         await loop.run_in_executor(None, self.client.wait_for_service)
         response = await loop.run_in_executor(None, self.client.call, True)
-        self.assertEquals(True, response.success)
+        self.assertEqual(True, response.success)
 
         server_task.cancel()
         await deflector_shield(server_task)
@@ -47,7 +47,7 @@ class TestServiceProxy(aiounittest.AsyncTestCase):
         await loop.run_in_executor(None, self.client.wait_for_service)
 
         with self.assertRaises(rospy.ServiceException):
-            response = await loop.run_in_executor(None, self.client.call, True)
+            _ = await loop.run_in_executor(None, self.client.call, True)
 
         with self.assertRaises(RuntimeError):
             await deflector_shield(server_task)
