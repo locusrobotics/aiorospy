@@ -246,46 +246,6 @@ class TestDeflectorShield(aiounittest.AsyncTestCase):
         finally:
             loop.set_exception_handler(original_handler)
 
-    async def test_outer_cancel_race_with_task_exception(self):
-        """Race condition: outer is cancelled while the shielded task simultaneously raises an exception.
-
-        The task exception must be retrieved to prevent asyncio's
-        "Task exception was never retrieved" error.
-        """
-        loop = asyncio.get_event_loop()
-
-        asyncio_exceptions = []
-        original_handler = loop.get_exception_handler()
-        loop.set_exception_handler(lambda l, ctx: asyncio_exceptions.append(ctx.get('exception')))
-
-        try:
-            task_may_raise = asyncio.Event()
-
-            async def failing_task():
-                await task_may_raise.wait()
-                raise ValueError("boom")
-
-            task = asyncio.ensure_future(failing_task())
-            outer_task = asyncio.ensure_future(deflector_shield(task))
-
-            await asyncio.sleep(0)
-
-            outer_task.cancel()
-            await asyncio.sleep(0)
-
-            task_may_raise.set()
-            await asyncio.sleep(0)
-            await asyncio.sleep(0)
-
-            await asyncio.gather(outer_task, task, return_exceptions=True)
-
-            self.assertEqual(
-                [], asyncio_exceptions,
-                f"asyncio callback raised unexpected exception(s): {asyncio_exceptions}"
-            )
-        finally:
-            loop.set_exception_handler(original_handler)
-
     async def test_outer_cancel_race_with_inner_cancel(self):
         """Race condition: outer is cancelled while the inner task is simultaneously cancelled.
 

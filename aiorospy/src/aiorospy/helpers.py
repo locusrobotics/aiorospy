@@ -146,7 +146,8 @@ async def detect_cancel(task):
         if cont.done():
             # Retrieve exception to prevent asyncio "Task exception was never retrieved" warning.
             if not task.cancelled():
-                task.exception()
+                if (exc := task.exception()) is not None:
+                    logger.warn(f"detect_cancel terminated before catching task exception {exc}")
             return
         if task.cancelled():
             cont.set_exception(ChildCancelled())
