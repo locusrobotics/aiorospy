@@ -143,6 +143,8 @@ async def detect_cancel(task):
     cont = asyncio.get_event_loop().create_future()
 
     def on_done(_):
+        if cont.done():
+            return
         if task.cancelled():
             cont.set_exception(ChildCancelled())
         elif task.exception() is not None:
