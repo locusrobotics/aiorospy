@@ -62,7 +62,7 @@ class TestDetectCancel(aiounittest.AsyncTestCase):
 
         asyncio_exceptions = []
         original_handler = loop.get_exception_handler()
-        loop.set_exception_handler(lambda l, ctx: asyncio_exceptions.append(ctx.get('exception')))
+        loop.set_exception_handler(lambda _, ctx: asyncio_exceptions.append(ctx.get('exception')))
 
         try:
             task_may_finish = asyncio.Event()
@@ -105,7 +105,7 @@ class TestDetectCancel(aiounittest.AsyncTestCase):
 
         asyncio_exceptions = []
         original_handler = loop.get_exception_handler()
-        loop.set_exception_handler(lambda l, ctx: asyncio_exceptions.append(ctx.get('exception')))
+        loop.set_exception_handler(lambda _, ctx: asyncio_exceptions.append(ctx.get('exception')))
 
         try:
             task_may_raise = asyncio.Event()
@@ -135,12 +135,11 @@ class TestDetectCancel(aiounittest.AsyncTestCase):
         finally:
             loop.set_exception_handler(original_handler)
 
-
         loop = asyncio.get_event_loop()
 
         asyncio_exceptions = []
         original_handler = loop.get_exception_handler()
-        loop.set_exception_handler(lambda l, ctx: asyncio_exceptions.append(ctx.get('exception')))
+        loop.set_exception_handler(lambda _, ctx: asyncio_exceptions.append(ctx.get('exception')))
 
         try:
             task = asyncio.ensure_future(asyncio.sleep(100))
@@ -216,7 +215,7 @@ class TestDeflectorShield(aiounittest.AsyncTestCase):
 
         asyncio_exceptions = []
         original_handler = loop.get_exception_handler()
-        loop.set_exception_handler(lambda l, ctx: asyncio_exceptions.append(ctx.get('exception')))
+        loop.set_exception_handler(lambda _, ctx: asyncio_exceptions.append(ctx.get('exception')))
 
         try:
             task_may_finish = asyncio.Event()
@@ -256,7 +255,7 @@ class TestDeflectorShield(aiounittest.AsyncTestCase):
 
         asyncio_exceptions = []
         original_handler = loop.get_exception_handler()
-        loop.set_exception_handler(lambda l, ctx: asyncio_exceptions.append(ctx.get('exception')))
+        loop.set_exception_handler(lambda _, ctx: asyncio_exceptions.append(ctx.get('exception')))
 
         try:
             task = asyncio.ensure_future(asyncio.sleep(100))
