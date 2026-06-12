@@ -55,8 +55,8 @@ Changelog for package aiorospy
 * Limit the size of the action feedback queue by default (#35)
 * Contributors: Alex Bencz, Doug Smith, Gary Servin, Paul Bovbel, abencz
 
-Forthcoming
------------
+0.12.2 (2026-06-12)
+-------------------
 * RST-15402 guard against inner cancel at the same time as outer cancel (`#52 <https://github.com/locusrobotics/aiorospy/issues/52>`_)
   Guard against cases where the inner and outer tasks are cancelled around
   the same time. This can lead to the on_done callback being called on a
