@@ -55,6 +55,20 @@ Changelog for package aiorospy
 * Limit the size of the action feedback queue by default (#35)
 * Contributors: Alex Bencz, Doug Smith, Gary Servin, Paul Bovbel, abencz
 
+Forthcoming
+-----------
+* RST-15402 guard against inner cancel at the same time as outer cancel (#52)
+  Guard against cases where the inner and outer tasks are cancelled around
+  the same time. This can lead to the on_done callback being called on a
+  terminated task object causing a crash.
+* Use separated requirements files for each distro (#51)
+  * Use separated requirements files for each distro
+  * Replace removed method
+  * Address test issues
+  ---------
+  Co-authored-by: locus-services <33065330+locus-services@users.noreply.github.com>
+* Contributors: Alex Bencz, Gary Servin
+
 0.12.0 (2026-03-03)
 -------------------
 

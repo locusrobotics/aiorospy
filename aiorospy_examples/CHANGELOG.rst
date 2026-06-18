@@ -38,6 +38,16 @@ Changelog for package aiorospy_examples
   Co-authored-by: Paul Bovbel <paul@bovbel.com>
 * Contributors: Doug Smith, Gary Servin
 
+Forthcoming
+-----------
+* Use separated requirements files for each distro (#51)
+  * Use separated requirements files for each distro
+  * Replace removed method
+  * Address test issues
+  ---------
+  Co-authored-by: locus-services <33065330+locus-services@users.noreply.github.com>
+* Contributors: Gary Servin
+
 0.12.0 (2026-03-03)
 -------------------
 
