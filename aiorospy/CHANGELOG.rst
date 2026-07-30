@@ -55,6 +55,9 @@ Changelog for package aiorospy
 * Limit the size of the action feedback queue by default (#35)
 * Contributors: Alex Bencz, Doug Smith, Gary Servin, Paul Bovbel, abencz
 
+Forthcoming
+-----------
+
 0.13.0 (2026-06-18)
 -------------------
 * RST-15402 guard against inner cancel at the same time as outer cancel (#52)
